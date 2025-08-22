@@ -29,13 +29,14 @@ typedef struct{
 typedef struct{
 	I2C_RegDef_t *pI2Cx;   				/* base address of I2C (x -> 1,2,3) */
 	I2C_Config_t I2C_Config;
-	uint8_t *TxBuffer;
-	uint8_t *RxBuffer;
-	uint8_t RxState;
-	uint8_t TxState;
+	uint8_t *TxBuffer;					/* to store addr of txbuff */
+	uint8_t *RxBuffer;					/* to store add of rxbuff */
+	uint8_t TxRxState;					/* to store communication state. possible values @ I2C_STATUS */
 	uint32_t RxLen;
 	uint32_t TxLen;
-
+	uint32_t RxSize;					/* to store Rx size */
+	uint8_t Sr;							/* to store repeated start value */
+	uint8_t DevAddr;					/* to store slave/device addr */
 
 }I2C_Handle_t;
 
@@ -97,6 +98,19 @@ typedef struct{
 #define I2C_EV_DATA_RCV         9
 
 
+/*
+ * @I2C_STATUS
+ * I2C_Status macros
+ */
+#define I2C_STATUS_READY		0
+#define I2C_STATUS_BUSY_TX		1
+#define I2C_STATUS_BUSY_RX		2
+
+/*
+ * READ / WRITE mode
+ */
+#define I2C_MASTER_WR			0
+#define I2C_MASTER_RD			1
 
 
 
@@ -118,16 +132,25 @@ void I2C_DeInit(I2C_RegDef_t *pI2Cx);
 /*
  * Peripheral read/ write
  */
-void I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAdd);
-void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len);
+void I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAdd, uint8_t Sr);
+void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr);
 
+void I2C_SlaveSendData(I2C_RegDef_t *pI2Cx, uint8_t data);
+uint8_t I2C_SlaveReceiveData(I2C_RegDef_t *pI2Cx);
+
+uint8_t I2C_MasterSendDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAdd, uint8_t Sr);
+uint8_t I2C_MasterReceiveDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr);
+
+void I2C_CloseSendData(I2C_Handle_t *pI2CHandle);
+void I2C_CloseReceiveData(I2C_Handle_t *pI2CHandle);
 
 /*
  * peripheral Interrupt
  */
 void I2C_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
 void I2C_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority);
-void I2C_IRQHandling(I2C_Handle_t *pI2CHandle);
+void I2C_EV_IRQHandling(I2C_Handle_t *pI2CHandle);
+void I2C_ER_IRQHandling(I2C_Handle_t *pI2CHandle);
 
 
 /*
@@ -143,6 +166,11 @@ uint32_t I2C_GetPCLK1Value(void);
 
 void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
 
+void I2C_ManageAcking(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
+
+void I2C_GenerateStopCondition (I2C_RegDef_t *pI2Cx);
+
+void I2C_SlaveEnableDisableInterrupt(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
 
 
 

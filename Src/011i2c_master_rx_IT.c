@@ -3,7 +3,9 @@
  *
  *  Created on: Aug 19, 2025
  *      Author: csmla
- *      Fn : I2C1_Master Sends message to the slave
+ *      Fn : I2C1_Master Sends commands to slave and receive data from slave using interrupts
+ *      Commands: 0x51 -> gets length of data from slave
+ *      		  0x52 -> gets data from slave
  *      I2C-1 standard mode 100khz,
  *      SCLK ->100khz,
  *
@@ -24,11 +26,22 @@
 #define BTN_NOT_PRESSED 		HIGH
 
 #define MY_ADDR 				0x40
-#define SLAVE_ADDR				0x60
+#define SLAVE_ADDR				0x65
+
+/* commands */
+#define CMD_LEN					0x51
+#define CMD_DATA				0x52
+
+
 
 I2C_Handle_t I2C1Handle;
 
-char  test_data[] = "We are testing I2C master Tx\n";
+uint8_t  receive_data[32];
+uint8_t command;
+uint16_t receive_len;
+
+/* flag variable */
+uint8_t rxComplt;
 
 
 
@@ -126,18 +139,88 @@ int main (void){
 	I2C_PeripheralControl(I2C1, ENABLE);
 
 	/* configure ack control in CR1 after enabling the peripheral i2c*/
-	I2C1Handle.pI2Cx -> CR1 |= (I2C1Handle.I2C_Config.I2C_AckControl << 10);
+	I2C_ManageAcking(I2C1, I2C_ACK_ENABLE);
+
+	/* configure IRQ Priority for I2C1 event and error interrupts*/
+	 I2C_IRQPriorityConfig(IRQ_NO_I2C1_EV, NVIC_IRQ_PR10);
+	 I2C_IRQPriorityConfig(IRQ_NO_I2C1_ER, NVIC_IRQ_PR9);
+
+	/* Enable I2C1_EV IRQ and I2C_ER IRQ */
+	 I2C_IRQInterruptConfig(IRQ_NO_I2C1_EV, ENABLE);
+	 I2C_IRQInterruptConfig(IRQ_NO_I2C1_ER, ENABLE);
+
 
 	while(1){
 
 		/* send command after the button is pressed */
 		WAIT_ForButtonPress();
+		printf("button is pressed\n");
 
-		/* send data */
-		I2C_MasterSendData(&I2C1Handle, (uint8_t *)test_data, strlen(test_data), SLAVE_ADDR, I2C_DISABLE_SR);
+		/* send CMD_LEN */
+		command = CMD_LEN;
+		while (I2C_MasterSendDataIT(&I2C1Handle, &command, 1, SLAVE_ADDR, I2C_DISABLE_SR) != I2C_STATUS_READY);
+
+		/*receive len of the data from slave */
+		while(I2C_MasterReceiveDataIT(&I2C1Handle, (uint8_t *) &receive_len, 1, SLAVE_ADDR, I2C_DISABLE_SR) != I2C_STATUS_READY);
+		rxComplt = RESET;
+
+		/* send CMD_LEN */
+		command = CMD_DATA;
+		while(I2C_MasterSendDataIT(&I2C1Handle, &command, 1, SLAVE_ADDR, I2C_DISABLE_SR) != I2C_STATUS_READY);
+
+		/*receive data from slave */
+		while(I2C_MasterReceiveDataIT(&I2C1Handle, receive_data, receive_len , SLAVE_ADDR, I2C_DISABLE_SR) != I2C_STATUS_READY);
+
+		while(rxComplt == RESET);
+		receive_data[receive_len] ='\0';
+		printf("Received Data : %s\n", receive_data);
 	}
 
 
 
 	return 0;
 }
+
+/* i2c1 event ISR */
+void I2C1_EV_IRQHandler (void){
+
+	I2C_EV_IRQHandling(&I2C1Handle);
+
+}
+
+
+/* i2c1 error ISR */
+void I2C1_ER_IRQHandler (void){
+
+	I2C_ER_IRQHandling(&I2C1Handle);
+
+}
+
+void I2C_ApplicationEventCallback(I2C_Handle_t *pI2CHandle,uint8_t AppEv)
+{
+    if(AppEv == I2C_EV_TX_CMPLT)
+    {
+        printf("Tx is completed\n");
+    }
+    else if (AppEv == I2C_EV_RX_CMPLT)
+    {
+        printf("Rx is completed\n");
+        rxComplt = SET;
+
+    }
+    else if (AppEv == I2C_ERROR_AF)
+    {
+        printf("Error : Ack failure\n");
+        /* Master ACK failure happens when slave fails to send ACK
+    	    for the byte sent from the master */
+        I2C_CloseSendData(pI2CHandle);
+
+        /* Generating stop condition to release the bus */
+        I2C_GenerateStopCondition(I2C1);
+
+        /* Hanging in infinite loop */
+        while(1);
+    }
+}
+
+
