@@ -47,7 +47,7 @@ void delay (void){
 
 
 
- /* This Fn is used to Initialize the GPIO_PIns to behave as SPI2 */
+ /* This Fn is used to Initialize the GPIO_PIns to behave as I2C */
 
 void I2C1_GPIOInits(void){
 	GPIO_Handle_t I2C1_Pins;
@@ -74,7 +74,7 @@ void I2C1_GPIOInits(void){
 
 
 /*
- * SPI2 Initialization
+ * I2C Initialization
  */
 void I2C1_Inits(void){
 

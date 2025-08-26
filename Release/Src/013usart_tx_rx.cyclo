@@ -1,0 +1,6 @@
+../Src/013usart_tx_rx.c:32:6:USART2_GPIOInits	1
+../Src/013usart_tx_rx.c:52:6:GPIO_Button_Inits	1
+../Src/013usart_tx_rx.c:69:6:delay	2
+../Src/013usart_tx_rx.c:80:6:WAIT_ForButtonPress	2
+../Src/013usart_tx_rx.c:92:6:USART2_Inits	1
+../Src/013usart_tx_rx.c:112:5:main	2

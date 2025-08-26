@@ -412,7 +412,7 @@ typedef struct{
 #define I2C3_REG_RESET()		do{(RCC->APB1RSTR |= (1 << 23)); (RCC->APB1RSTR &= ~(1 << 23));}while(0)
 
 
-#define USART2_REG_RESET()		do{(RCC->APB2RSTR |= (1 << 4)); (RCC->APB2RSTR &= ~(1 << 4));}while(0)
+#define USART1_REG_RESET()		do{(RCC->APB2RSTR |= (1 << 4)); (RCC->APB2RSTR &= ~(1 << 4));}while(0)
 #define USART2_REG_RESET()		do{(RCC->APB1RSTR |= (1 << 17)); (RCC->APB1RSTR &= ~(1 << 17));}while(0)
 #define USART3_REG_RESET()		do{(RCC->APB1RSTR |= (1 << 18)); (RCC->APB1RSTR &= ~(1 << 18));}while(0)
 #define UART4_REG_RESET()		do{(RCC->APB1RSTR |= (1 << 19)); (RCC->APB1RSTR &= ~(1 << 19));}while(0)
@@ -671,7 +671,7 @@ typedef struct{
 #define USART_CR2_ADD3_0			0
 #define USART_CR2_LBDL 				5
 #define USART_CR2_LBDIE				6
-#define USART_CR2_Res.				7
+#define USART_CR2_RES				7
 #define USART_CR2_LBCL				8
 #define USART_CR2_CPHA				9
 #define USART_CR2_CPOL				10
@@ -700,5 +700,7 @@ typedef struct{
 #include "stm32f446xx_gpio_driver.h"
 #include "stm32f446xx_spi_driver.h"
 #include "stm32f446xx_i2c_driver.h"
+#include "stm32f446xx_usart_driver.h"
+#include "stm32f446xx_rcc_driver.h"
 
 #endif /* INC_STM32F446XX_H_ */

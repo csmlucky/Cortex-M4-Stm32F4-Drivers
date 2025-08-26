@@ -7,6 +7,7 @@
 
 
 #include "stm32f446xx_i2c_driver.h"
+#include "stm32f446xx_rcc_driver.h"
 #include <string.h>
 
 
@@ -18,55 +19,6 @@ static void I2C_ClearADDRFlag (I2C_Handle_t *pI2CHandle);
 static void I2C_MasterHandleRXNEInterrupt (I2C_Handle_t *pI2CHandle);
 static void I2C_MasterHandleTXEInterrupt (I2C_Handle_t *pI2CHandle);
 static void I2C_MasterHandleBTFInterrupt (I2C_Handle_t *pI2CHandle);
-
-
-uint16_t ahb_PreScaler[10] = {2, 4, 8, 16, 64, 128, 256, 512};
-uint8_t abp1_PreScaler[4] = {2, 4, 6, 8};
-
-
-/******************************************************************************
- * @fn			- RCC_GetPCLK1Value
- *
- * @brief		- (PCLK1 = system clk freq / AHB pre scaler) /APB1 pre scaler
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-uint32_t
- *
- * @note		-
- */
-uint32_t  I2C_GetPCLK1Value (void){
-
-
-	uint32_t  pclk1, systemClk;
-	uint16_t ahbp;
-	uint8_t clkSrc, temp, apb1p;
-
-	clkSrc = (RCC -> CFGR >> 2) & 0x3;
-
-	if(clkSrc == 0) systemClk = HSI_CLK_FREQ;
-	else if(clkSrc == 1) systemClk = HSE_CLK_FREQ;
-
-	temp = (RCC -> CFGR >> 4) & 0xF;
-
-	if(temp < 8) ahbp = 1;
-	else ahbp = ahb_PreScaler[temp - 8];
-
-
-	temp = (RCC -> CFGR >> 10) & 0x7;
-
-	if(temp < 4) apb1p = 1;
-	else apb1p = abp1_PreScaler[temp - 4];
-
-	pclk1 = (systemClk / ahbp /apb1p);
-
-	return pclk1;
-
-
-}
-
 
 
 
@@ -132,7 +84,7 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
 
 	/* configure FREQ field in CR2 */
 	tempreg = 0;
-	tempreg |= (I2C_GetPCLK1Value() / 1000000U);
+	tempreg |= (RCC_GetPCLK1Value() / 1000000U);
 	pI2CHandle -> pI2Cx -> CR2 |= (tempreg & 0x3F);
 
 	/* program the device own address */
@@ -148,7 +100,7 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
 
 	if(pI2CHandle -> I2C_Config.I2C_SCLSpeed <= I2C_SCLK_SPEED_SM){
 		/* standard freq mode*/
-		ccrValue = (I2C_GetPCLK1Value() / (2 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
+		ccrValue = (RCC_GetPCLK1Value() / (2 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
 		tempreg |= (ccrValue & 0xFFF);
 	}
 	else{
@@ -161,10 +113,10 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
 
 		/* ccr calc */
 		if(pI2CHandle ->I2C_Config.I2C_FMDutyCycle == I2C_FM_DUTY_2){
-			ccrValue = (I2C_GetPCLK1Value() / (3 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
+			ccrValue = (RCC_GetPCLK1Value() / (3 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
 		}
 		else{
-			ccrValue = (I2C_GetPCLK1Value() / (25 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
+			ccrValue = (RCC_GetPCLK1Value() / (25 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
 		}
 		tempreg |= (ccrValue & 0xFFF);
 	}
@@ -174,11 +126,11 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
 	/* configure TRISE reg */
 	if(pI2CHandle -> I2C_Config.I2C_SCLSpeed <= I2C_SCLK_SPEED_SM){
 		/* standard mode */
-		tempreg = (I2C_GetPCLK1Value() / 1000000U) + 1;
+		tempreg = (RCC_GetPCLK1Value() / 1000000U) + 1;
 	}
 	else{
 		/* Fast mode */
-		tempreg = (I2C_GetPCLK1Value() * 300/ 1000000000U) + 1;
+		tempreg = (RCC_GetPCLK1Value() * 300/ 1000000000U) + 1;
 	}
 	pI2CHandle -> pI2Cx ->TRISE = (tempreg & 0x3F);
 }

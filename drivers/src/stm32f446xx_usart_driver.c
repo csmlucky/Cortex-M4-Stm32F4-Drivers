@@ -1,71 +1,22 @@
 /*
- * stm32f446xx_i2c_driver.c
+ * stm32f446xx_USART_driver.c
  *
  *  Created on: Aug 15, 2025
  *      Author: csmla
  */
 
 
-#include "stm32f446xx_i2c_driver.h"
+#include "stm32f446xx_usart_driver.h"
+#include "stm32f446xx_rcc_driver.h"
 #include <string.h>
 
 
 
-static void I2C_GenerateStartCondition (I2C_RegDef_t *pI2Cx);
-static void I2C_ExecuteAddressPhase (I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr, uint8_t mode);
-static void I2C_ClearADDRFlag (I2C_Handle_t *pI2CHandle);
-
-static void I2C_MasterHandleRXNEInterrupt (I2C_Handle_t *pI2CHandle);
-static void I2C_MasterHandleTXEInterrupt (I2C_Handle_t *pI2CHandle);
-static void I2C_MasterHandleBTFInterrupt (I2C_Handle_t *pI2CHandle);
 
 
-uint16_t ahb_PreScaler[10] = {2, 4, 8, 16, 64, 128, 256, 512};
-uint8_t abp1_PreScaler[4] = {2, 4, 6, 8};
+static void USART_HandleRXNEInterrupt (USART_Handle_t *pUSARTHandle);
+static void USART_HandleTXEInterrupt (USART_Handle_t *pUSARTHandle);
 
-
-/******************************************************************************
- * @fn			- RCC_GetPCLK1Value
- *
- * @brief		- (PCLK1 = system clk freq / AHB pre scaler) /APB1 pre scaler
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-uint32_t
- *
- * @note		-
- */
-uint32_t  I2C_GetPCLK1Value (void){
-
-
-	uint32_t  pclk1, systemClk;
-	uint16_t ahbp;
-	uint8_t clkSrc, temp, apb1p;
-
-	clkSrc = (RCC -> CFGR >> 2) & 0x3;
-
-	if(clkSrc == 0) systemClk = HSI_CLK_FREQ;
-	else if(clkSrc == 1) systemClk = HSE_CLK_FREQ;
-
-	temp = (RCC -> CFGR >> 4) & 0xF;
-
-	if(temp < 8) ahbp = 1;
-	else ahbp = ahb_PreScaler[temp - 8];
-
-
-	temp = (RCC -> CFGR >> 10) & 0x7;
-
-	if(temp < 4) apb1p = 1;
-	else apb1p = abp1_PreScaler[temp - 4];
-
-	pclk1 = (systemClk / ahbp /apb1p);
-
-	return pclk1;
-
-
-}
 
 
 
@@ -74,11 +25,11 @@ uint32_t  I2C_GetPCLK1Value (void){
 
 
 /******************************************************************************
- * @fn			- I2C_PeriClockControl
+ * @fn			- USART_PeriClockControl
  *
- * @brief		- This fn Enables or Disables peripheral clock for the I2C
+ * @brief		- This fn Enables or Disables peripheral clock for the USART
  *
- * @param[in]	- I2C port base address
+ * @param[in]	- USART port base address
  * @param[in]	- ENABLE or DISABLE Macros
  * @param[in]	-
  *
@@ -86,17 +37,24 @@ uint32_t  I2C_GetPCLK1Value (void){
  *
  * @note		-
  */
-void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
+void USART_PeriClockControl(USART_RegDef_t *pUSARTx, uint8_t EnorDi){
 
 	if (EnorDi == ENABLE){
-		if(pI2Cx == I2C1) I2C1_PCLK_EN();
-		else if(pI2Cx == I2C2) I2C2_PCLK_EN();
-		else if (pI2Cx == I2C3) I2C3_PCLK_EN();
+		if(pUSARTx == USART1) USART1_PCLK_EN();
+		else if (pUSARTx == USART2) USART2_PCLK_EN();
+		else if (pUSARTx == USART3) USART3_PCLK_EN();
+		else if (pUSARTx == UART4) UART4_PCLK_EN();
+		else if (pUSARTx == UART5) UART5_PCLK_EN();
+		else if (pUSARTx == USART6) USART6_PCLK_EN();
+
 	}
 	else {
-		if(pI2Cx == I2C1) I2C1_PCLK_DI();
-		else if(pI2Cx == I2C2) I2C2_PCLK_DI();
-		else if (pI2Cx == I2C3) I2C3_PCLK_DI();
+		if(pUSARTx == USART1) USART1_PCLK_EN();
+		else if (pUSARTx == USART2) USART2_PCLK_DI();
+		else if (pUSARTx == USART3) USART3_PCLK_DI();
+		else if (pUSARTx == UART4) UART4_PCLK_DI();
+		else if (pUSARTx == UART5) UART5_PCLK_DI();
+		else if (pUSARTx == USART6) USART6_PCLK_DI();
 
 	}
 
@@ -107,11 +65,11 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
 
 
 /******************************************************************************
- * @fn			- I2C_Init
+ * @fn			- USART_Init
  *
  * @brief		-
  *
- * @param[in]	- I2C HAndle  base address
+ * @param[in]	- USART HAndle  base address
  * @param[in]	-
  * @param[in]	-
  *
@@ -119,68 +77,102 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
  *
  * @note		-
  */
-void I2C_Init(I2C_Handle_t *pI2CHandle){
+void USART_Init(USART_Handle_t *pUSARTHandle){
 
 	uint32_t tempreg = 0;
 
 	/*Enable Peripheral clock */
-	I2C_PeriClockControl(pI2CHandle -> pI2Cx, ENABLE);
+	USART_PeriClockControl(pUSARTHandle -> pUSARTx, ENABLE);
 
-	/* configure ack control in CR1*/
-	tempreg |= ((pI2CHandle -> I2C_Config.I2C_AckControl) << 10);
-	pI2CHandle -> pI2Cx -> CR1 |= (tempreg & 0xFFFF);
+	/******************************** Configuration of CR1******************************************/
 
-	/* configure FREQ field in CR2 */
-	tempreg = 0;
-	tempreg |= (I2C_GetPCLK1Value() / 1000000U);
-	pI2CHandle -> pI2Cx -> CR2 |= (tempreg & 0x3F);
+	/* Enable USART Tx and Rx engines according to the USART_Mode configuration item */
+	if (pUSARTHandle->USART_Config.USART_Mode == USART_MODE_ONLY_RX)
+	{
+		/* enable the Receiver bit field*/
+		tempreg |= (1 << USART_CR1_RE);
 
-	/* program the device own address */
-	tempreg = 0;
-	tempreg |= (pI2CHandle -> I2C_Config.I2C_DeviceAddress << 1);
-	/* I2C_OAR1 14 bit always should be kept at 1 as per reference manual */
-	tempreg |= (1 << 14);
-	pI2CHandle -> pI2Cx -> OAR1 |= tempreg;
+	}else if (pUSARTHandle->USART_Config.USART_Mode == USART_MODE_ONLY_TX)
+	{
+		/* enable the Transmitter bit field */
+		tempreg |= ( 1 << USART_CR1_TE );
 
-	/*CCR calculation */
-	uint16_t ccrValue = 0;
-	tempreg = 0;
-
-	if(pI2CHandle -> I2C_Config.I2C_SCLSpeed <= I2C_SCLK_SPEED_SM){
-		/* standard freq mode*/
-		ccrValue = (I2C_GetPCLK1Value() / (2 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
-		tempreg |= (ccrValue & 0xFFF);
-	}
-	else{
-		/* Fast freq mode */
-
-		/* set F/S bit in CCR to enable fast mode*/
-		tempreg |= (1 << 15);
-		/* configure duty cycle */
-		tempreg |= (pI2CHandle ->I2C_Config.I2C_FMDutyCycle << 14);
-
-		/* ccr calc */
-		if(pI2CHandle ->I2C_Config.I2C_FMDutyCycle == I2C_FM_DUTY_2){
-			ccrValue = (I2C_GetPCLK1Value() / (3 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
-		}
-		else{
-			ccrValue = (I2C_GetPCLK1Value() / (25 * pI2CHandle -> I2C_Config.I2C_SCLSpeed));
-		}
-		tempreg |= (ccrValue & 0xFFF);
+	}else if (pUSARTHandle->USART_Config.USART_Mode == USART_MODE_TXRX)
+	{
+		/* enable the both Transmitter and Receiver bit fields */
+		tempreg |= ( ( 1 << USART_CR1_TE) | ( 1 << USART_CR1_RE) );
 	}
 
-	pI2CHandle -> pI2Cx -> CCR |= tempreg;
+	/* Word length configuration item */
+	tempreg |= pUSARTHandle->USART_Config.USART_DataSize << USART_CR1_M ;
 
-	/* configure TRISE reg */
-	if(pI2CHandle -> I2C_Config.I2C_SCLSpeed <= I2C_SCLK_SPEED_SM){
-		/* standard mode */
-		tempreg = (I2C_GetPCLK1Value() / 1000000U) + 1;
+
+	/*Configuration of parity control bit fields */
+	if ( pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_EN_EVEN)
+	{
+		/* enale the parity control */
+		tempreg |= ( 1 << USART_CR1_PCE);
+
+		/*enable EVEN parity */
+		/* Not required because by default EVEN parity will be selected once you enable the parity control */
+
+	}else if (pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_EN_ODD )
+	{
+		/* enable the parity control */
+		tempreg |= ( 1 << USART_CR1_PCE);
+
+		/* enable ODD parity */
+		tempreg |= ( 1 << USART_CR1_PS);
+
 	}
-	else{
-		/* Fast mode */
-		tempreg = (I2C_GetPCLK1Value() * 300/ 1000000000U) + 1;
+
+   /*Program the CR1 register */
+	pUSARTHandle->pUSARTx->CR1 |= tempreg;
+
+
+	/******************************** Configuration of CR2******************************************/
+
+	tempreg=0;
+
+	/* configure the number of stop bits inserted during USART frame transmission */
+	tempreg |= pUSARTHandle->USART_Config.USART_NoOfStopbits << USART_CR2_STOP1_0;
+
+	/* Program the CR2 register */
+	pUSARTHandle->pUSARTx->CR2 |= tempreg;
+
+	/******************************** Configuration of CR3******************************************/
+
+	tempreg=0;
+
+	/* Configuration of USART hardware flow control */
+	if ( pUSARTHandle->USART_Config.USART_HWFlowControl == USART_HW_FLOW_CTRL_CTS)
+	{
+		/* enable CTS flow control */
+		tempreg |= ( 1 << USART_CR3_CTSE);
+
+
+	}else if (pUSARTHandle->USART_Config.USART_HWFlowControl == USART_HW_FLOW_CTRL_RTS)
+	{
+		/* enable RTS flow control */
+		tempreg |= (1 << USART_CR3_RTSE);
+
+	}else if (pUSARTHandle->USART_Config.USART_HWFlowControl == USART_HW_FLOW_CTRL_CTS_RTS)
+	{
+		/* enable both CTS and RTS Flow control */
+		tempreg |= ( 1 << USART_CR3_CTSE);
+		tempreg |= (1 << USART_CR3_RTSE);
+
 	}
-	pI2CHandle -> pI2Cx ->TRISE = (tempreg & 0x3F);
+
+	/* program the CR3 reg */
+	pUSARTHandle->pUSARTx->CR3 = tempreg;
+
+	/******************************** Configuration of BRR(Baudrate register)******************************************/
+
+	/*code to configure the baud rate */
+
+	USART_SetBaudRate(pUSARTHandle ->pUSARTx, USART_BAUD_9600);
+
 }
 
 
@@ -188,11 +180,11 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
 
 
 /******************************************************************************
- * @fn			- I2C_DeInit
+ * @fn			- USART_DeInit
  *
  * @brief		-
  *
- * @param[in]	- I2C HAndle  base address
+ * @param[in]	- USART HAndle  base address
  * @param[in]	-
  * @param[in]	-
  *
@@ -200,16 +192,18 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
  *
  * @note		-
  */
-void I2C_DeInit(I2C_RegDef_t *pI2Cx){
+void USART_DeInit(USART_RegDef_t *pUSARTx){
 
-	if(pI2Cx == I2C1) I2C1_REG_RESET();
-	else if (pI2Cx == I2C2) I2C2_REG_RESET();
-	else if (pI2Cx == I2C3) I2C3_REG_RESET();
-
+	if(pUSARTx == USART1) USART1_REG_RESET();
+	else if (pUSARTx == USART2) USART2_REG_RESET();
+	else if (pUSARTx == USART3) USART3_REG_RESET();
+	else if (pUSARTx == UART4) UART4_REG_RESET();
+	else if (pUSARTx == UART5) UART5_REG_RESET();
+	else if (pUSARTx == USART6) USART6_REG_RESET();
 }
 
 /******************************************************************************
- * @fn			- I2C_GetFlagStatus
+ * @fn			- USART_GetFlagStatus
  *
  * @brief		-
  *
@@ -221,17 +215,37 @@ void I2C_DeInit(I2C_RegDef_t *pI2Cx){
  *
  * @note		-
  */
-uint8_t I2C_GetFlagStatus(I2C_RegDef_t *pI2Cx, uint8_t flagName){
+uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx, uint8_t flagName){
 
-	if(pI2Cx ->SR1 & flagName)return FLAG_SET;
+	if(pUSARTx ->SR & flagName)return FLAG_SET;
 	return FLAG_RESET;
 
 }
 
 
+/******************************************************************************
+ * @fn			- USART_ClearFlagStatus
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-FLAG_RESET macros
+ *
+ * @note		-
+ */
+void USART_ClearFlagStatus(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName){
+
+	pUSARTx ->SR &= ~StatusFlagName;
+
+
+}
+
 
 /******************************************************************************
- * @fn			- I2C_PeripheralControl
+ * @fn			- USART_PeripheralControl
  *
  * @brief		-
  *
@@ -243,20 +257,23 @@ uint8_t I2C_GetFlagStatus(I2C_RegDef_t *pI2Cx, uint8_t flagName){
  *
  * @note		-
  */
-void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
+void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnorDi){
 
 	if(EnorDi == ENABLE){
-		pI2Cx -> CR1 |= (1 << I2C_CR1_PE);
+		pUSARTx -> CR1 |= (1 << USART_CR1_UE);
 	}
 	else{
-		pI2Cx -> CR1 &= ~(1 << I2C_CR1_PE);
+		pUSARTx -> CR1 &= ~(1 << USART_CR1_UE);
 	}
 
 }
 
 
+
+
+
 /******************************************************************************
- * @fn			- I2C_ManageAcking
+ * @fn			- USART_EnableDisableInterrupt
  *
  * @brief		-
  *
@@ -268,74 +285,98 @@ void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
  *
  * @note		-
  */
-void I2C_ManageAcking(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
+void USART_EnableDisableInterrupt(USART_RegDef_t *pUSARTx, uint8_t EnorDi){
 
-	if(EnorDi == I2C_ACK_ENABLE) pI2Cx -> CR1 |= (1 << 10);
-	else pI2Cx -> CR1 &= ~(1 << 10);
+
+
 }
 
 
 
-/*****************************************************************
- * @fn          - I2C_GenerateStopCondition
+
+
+/*********************************************************************
+ * @fn      		  - USART_SetBaudRate
  *
- * @brief       - Generate stop condition for I2C
+ * @brief             -
  *
- * @param[in]   - Base address of the I2C peripheral
+ * @param[in]         -
+ * @param[in]         -
+ * @param[in]         -
  *
- * @return      - None
+ * @return            -
  *
- * @Note        - None
- *
- *****************************************************************/
-void I2C_GenerateStopCondition(I2C_RegDef_t *pI2Cx)
+ * @Note              -  Resolve all the TODOs
+
+ */
+void USART_SetBaudRate(USART_RegDef_t *pUSARTx, uint32_t BaudRate)
 {
-    pI2Cx-> CR1 |= (1 << I2C_CR1_STOP);
-}
+	/* to hold peripheral clock */
+	uint32_t usart_clkfreq;
 
+	/* variables to hold mantissa and fraction */
+	uint32_t  usartdiv, usartdiv_mpart, usartdiv_fpart;
 
+	uint32_t temp = 0;
 
-/******************************************************************************
- * @fn			- I2C_SlaveEnableDisableInterrupt
- *
- * @brief		-
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-
- *
- * @note		-
- */
-void I2C_SlaveEnableDisableInterrupt(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
+	if( (pUSARTx == USART1) || (pUSARTx == USART6)){
 
-	if(EnorDi == ENABLE){
-		/* enable ITBUFEN Control Bit */
-		pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITBUFEN);
-
-		/* enable ITEVFEN Control Bit */
-		pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITEVTEN);
-
-		/* ITERREN Control Bit */
-		pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITERREN);
-
+		usart_clkfreq = RCC_GetPCLK2Value();
 	}
 	else{
-		/* disable ITBUFEN Control Bit */
-		pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITBUFEN);
 
-		/* disable ITEVFEN Control Bit */
-		pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITEVTEN);
-
-		/* disable ITERREN Control Bit */
-		pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITERREN);
+		usart_clkfreq = RCC_GetPCLK1Value();
 
 	}
 
+	if(pUSARTx ->CR1 & (1 << USART_CR1_OVER8)){
+
+		/* over8 = 1 */
+		/* usartdiv = (pclk/(8*(2-OVER8)*Baudrate) * 100 = 12.5*pclk/1* Baudrate  => 25 *pclk/ 2* Baudrate */
+
+		usartdiv = 25 * usart_clkfreq /(2 * BaudRate);
+		/* calculate mantissa */
+		usartdiv_mpart = usartdiv / 100 ;
+
+		/* calculate fraction. add 50 to round it up */
+		usartdiv_fpart = ((usartdiv - (usartdiv_mpart * 100)) * 8) + 50;
+		usartdiv_fpart /= 100;
+
+		if(usartdiv_fpart > 7){
+			usartdiv_mpart += 1;
+		}
+		usartdiv_fpart &= (uint8_t)(0x07);
+	}
+	else {
+
+		/* over8 = 0 */
+		/* usartdiv = (pclk/(8*(2-OVER8)*Baudrate) * 100 = 12.5*pclk/2* Baudrate  => 25 *pclk/ 4* Baudrate */
+
+		usartdiv = 25 * usart_clkfreq /(4 * BaudRate);
+
+		/* calculate mantissa */
+		usartdiv_mpart = usartdiv / 100 ;
+
+		/* calculate fraction. add 50 to round it up */
+		usartdiv_fpart = ((usartdiv - (usartdiv_mpart * 100)) * 16) + 50;
+		usartdiv_fpart /= 100;
+
+		if(usartdiv_fpart > 15){
+			usartdiv_mpart += 1;
+		}
+		usartdiv_fpart &= (uint8_t)(0x0F);
+
+	}
+
+
+	/* program the baud rate usartdiv in BRR */
+	temp = (usartdiv_mpart << 4);
+	temp |= usartdiv_fpart;
+
+	pUSARTx ->BRR |= temp;
+
+
 }
-
-
 
 
 
@@ -346,7 +387,7 @@ void I2C_SlaveEnableDisableInterrupt(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
 
 
 /******************************************************************************
- * @fn			- I2C_CloseSendData
+ * @fn			- USART_CloseSendData
  *
  * @brief		-
  *
@@ -358,22 +399,9 @@ void I2C_SlaveEnableDisableInterrupt(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
  *
  * @note		-
  */
-void I2C_CloseSendData(I2C_Handle_t *pI2CHandle){
+void USART_CloseSendData(USART_Handle_t *pUSARTHandle){
 
-	/* disable ITBUFEN Control Bit */
-	pI2CHandle -> pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITBUFEN);
 
-	/* disable ITEVFEN Control Bit */
-	pI2CHandle -> pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITEVTEN);
-
-	/*resets all members in handle structure */
-	pI2CHandle ->TxLen = 0;
-	pI2CHandle ->TxBuffer = NULL;
-	pI2CHandle ->TxRxState = I2C_STATUS_READY;
-
-	if(pI2CHandle ->I2C_Config.I2C_AckControl == I2C_ACK_ENABLE){
-		I2C_ManageAcking(pI2CHandle ->pI2Cx, ENABLE);
-	}
 
 }
 
@@ -382,7 +410,7 @@ void I2C_CloseSendData(I2C_Handle_t *pI2CHandle){
 
 
 /******************************************************************************
- * @fn			- I2C_CloseReceiveData
+ * @fn			- USART_CloseReceiveData
  *
  * @brief		-
  *
@@ -394,23 +422,8 @@ void I2C_CloseSendData(I2C_Handle_t *pI2CHandle){
  *
  * @note		-
  */
-void I2C_CloseReceiveData(I2C_Handle_t *pI2CHandle){
+void USART_CloseReceiveData(USART_Handle_t *pUSARTHandle){
 
-	/* disable ITBUFEN Control Bit */
-	pI2CHandle -> pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITBUFEN);
-
-	/* disable ITEVFEN Control Bit */
-	pI2CHandle -> pI2Cx -> CR2 &= ~( 1 << I2C_CR2_ITEVTEN);
-
-	/*resets all members in handle structure */
-	pI2CHandle ->RxLen = 0;
-	pI2CHandle ->RxSize = 0;
-	pI2CHandle ->RxBuffer = NULL;
-	pI2CHandle ->TxRxState = I2C_STATUS_READY;
-
-	if(pI2CHandle ->I2C_Config.I2C_AckControl == I2C_ACK_ENABLE){
-		I2C_ManageAcking(pI2CHandle ->pI2Cx, ENABLE);
-	}
 
 }
 
@@ -418,7 +431,7 @@ void I2C_CloseReceiveData(I2C_Handle_t *pI2CHandle){
 
 
 /******************************************************************************
- * @fn			- I2C_MasterSendData
+ * @fn			- USART_SendData
  *
  * @brief		-
  *
@@ -430,181 +443,134 @@ void I2C_CloseReceiveData(I2C_Handle_t *pI2CHandle){
  *
  * @note		-
  */
-void I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr){
+void USART_SendData(USART_Handle_t *pUSARTHandle, uint8_t *pTxBuffer, uint32_t Len){
+	uint16_t *pdata;
 
-	/* Generate the start condition */
-	I2C_GenerateStartCondition(pI2CHandle ->pI2Cx);
+	/*Loop over until "Len" number of bytes are transferred */
+	for(uint32_t i = 0 ; i < Len; i++)
+	{
+		/* wait until TXE flag is set in the SR */
+		while(! USART_GetFlagStatus(pUSARTHandle->pUSARTx,USART_FLAG_TXE));
 
-	/*Confirm the start generation is completed by using the SB flag in SR1 reg */
-	/* Note: until SB flag is cleared SCL will be stretched (pulled low) */
-	while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_SB) == RESET);
+		 /*  USART_WordLength item for 9BIT or 8BIT in a frame */
+		if(pUSARTHandle->USART_Config.USART_DataSize == USART_DATA_9BITS)
+		{
+			/* if 9BIT, load the DR with 2bytes masking the bits other than first 9 bits */
+			pdata = (uint16_t*) pTxBuffer;
+			*pdata = (*pdata & (uint16_t)0x01FF);
 
-	/* send the slave address with r(1) / w(0) bit as lsb */
-	I2C_ExecuteAddressPhase(pI2CHandle ->pI2Cx, SlaveAddr, I2C_MASTER_WR);
-
-	/* Confirm sending address is completed by checking the ADDR bit in SR1 reg */
-	while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_ADDR) == RESET);
-
-	/* clear ADDR bit Note: until ADDR flag is cleared SCL will be stretched (pulled low)*/
-	I2C_ClearADDRFlag(pI2CHandle);
-
-	/* Send the Data until Len becomes 0 */
-	while (Len > 0){
-
-		/*wait until TXE bit is set*/
-		while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_TXE) == RESET);
-		pI2CHandle -> pI2Cx -> DR = *pTxBuffer;
-		Len --;
-		pTxBuffer ++;
-	}
-
-	/* Waiting for TXE=1 and BTF=1 before generating STOP condition */
-	while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_TXE) == RESET);
-	while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_BTF) == RESET);
-
- /* Generate STOP condition and master not need to wait for the completion of stop condition */
-	if (Sr == I2C_DISABLE_SR){
-		I2C_GenerateStopCondition(pI2CHandle ->pI2Cx);
-	}
-}
-
-
-
-/******************************************************************************
- * @fn			- I2C_MasterReceiveData
- *
- * @brief		-
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-
- *
- * @note		-
- */
-void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr ){
-
-	/* Generate the start condition */
-	I2C_GenerateStartCondition(pI2CHandle ->pI2Cx);
-
-	/*Confirm the start generation is completed by using the SB flag in SR1 reg */
-	/* Note: until SB flag is cleared SCL will be stretched (pulled low) */
-	while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_SB) == RESET);
-
-	/* send the slave address with r(1) / w(0) bit as lsb */
-	I2C_ExecuteAddressPhase(pI2CHandle ->pI2Cx, SlaveAddr, I2C_MASTER_RD);
-
-	/* Confirm sending address is completed by checking the ADDR bit in SR1 reg */
-	while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_ADDR) == RESET);
-
-	if(Len == 1 ){
-
-		/* Disable ACk bit in CR1 before clears ADDR flag */
-		I2C_ManageAcking(pI2CHandle ->pI2Cx, I2C_ACK_DISABLE);
-
-		/* clear ADDR bit Note: until ADDR flag is cleared SCL will be stretched (pulled low)*/
-		I2C_ClearADDRFlag(pI2CHandle);
-
-		/*wait until RXNE flag is set */
-		while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_RXNE) == RESET);
-
-		/* Generate STOP condition and master not need to wait for the completion of stop condition */
-		if (Sr == I2C_DISABLE_SR){
-			I2C_GenerateStopCondition(pI2CHandle ->pI2Cx);
+			/* check for USART_ParityControl */
+			if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
+			{
+				/* No parity is used in this transfer. so, 9bits of user data will be sent */
+				/* increment pTxBuffer twice */
+				pUSARTHandle->pUSARTx->DR = *pdata;
+				pTxBuffer++;
+				pTxBuffer++;
+			}
+			else
+			{
+				/* Parity bit is used in this transfer . so , 8bits of user data will be sent */
+				/* The 9th bit will be replaced by parity bit by the hardware */
+				pUSARTHandle->pUSARTx->DR = *pTxBuffer;
+				pTxBuffer++;
+			}
 		}
-		/*  Read data into buffer */
-		*pRxBuffer = pI2CHandle -> pI2Cx -> DR;
+		else
+		{
+			/* This is 8bit data transfer */
+			pUSARTHandle->pUSARTx->DR = (*pTxBuffer  & (uint8_t)0xFF);
 
-
+			/* code to increment the buffer address */
+			pTxBuffer++;
+		}
 	}
-	else if (Len > 1){
 
-		/* clear ADDR bit Note: until ADDR flag is cleared SCL will be stretched (pulled low)*/
-		I2C_ClearADDRFlag(pI2CHandle);
+	//Implement the code to wait till TC flag is set in the SR
+	while( ! USART_GetFlagStatus(pUSARTHandle->pUSARTx,USART_FLAG_TC));
+}
 
-		/* read data until the len becomes 0 */
-		for(uint16_t i = Len; i > 0; i--){
 
-			/*wait until RXNE flag is set */
-			while(I2C_GetFlagStatus(pI2CHandle ->pI2Cx, I2C_FLAG_RXNE) == RESET);
 
-			if( i == 2){
 
-				/* Disable ACk bit in CR1 */
-				I2C_ManageAcking(pI2CHandle ->pI2Cx, I2C_ACK_DISABLE);
+
+
+/******************************************************************************
+ * @fn			- USART_ReceiveData
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-
+ *
+ * @note		-
+ */
+void USART_ReceiveData(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len ){
+
+	/* Loop over until "Len" number of bytes are transferred */
+	for(uint32_t i = 0 ; i < Len; i++){
+		/* code to wait until RXNE flag is set in the SR */
+		while (!(USART_GetFlagStatus(pUSARTHandle ->pUSARTx, USART_FLAG_RXNE)));
+
+		/* Check the USART_WordLength to decide whether we are going to receive 9bit of data in a frame or 8 bit */
+		if(pUSARTHandle->USART_Config.USART_DataSize == USART_DATA_9BITS)
+		{
+			/*We are going to receive 9bit data in a frame*/
+
+			/* check are we using USART_ParityControl control or not*/
+			if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
+			{
+				/* No parity is used. so, all 9bits will be of user data */
+
+				/* read only first 9 bits. so, mask the DR with 0x01FF */
+				*((uint16_t*) pRxBuffer) = (pUSARTHandle->pUSARTx->DR  & (uint16_t)0x1FF);
+
+				/* increment the pRxBuffer */
+				pRxBuffer ++;
+				pRxBuffer ++;
 
 			}
-			if( i == 1){
+			else
+			{
+				/* Parity is used, so, 8bits will be of user data and 1 bit is parity */
+				 *pRxBuffer = (pUSARTHandle->pUSARTx->DR  & (uint8_t)0xFF);
 
-				/* Generate STOP condition and master not need to wait for the completion of stop condition */
-				if (Sr == I2C_DISABLE_SR){
-					I2C_GenerateStopCondition(pI2CHandle ->pI2Cx);
-				}
+				 /* Increment the pRxBuffer */
+				pRxBuffer ++;
+			}
+		}
+		else
+		{
+			/* We are going to receive 8bit data in a frame */
+
+			/* check are we using USART_ParityControl control or not */
+			if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
+			{
+				/* No parity is used , so all 8bits will be of user data */
+
+				/* read 8 bits from DR */
+				 *pRxBuffer = (pUSARTHandle->pUSARTx->DR  & (uint8_t)0xFF);
+			}
+
+			else
+			{
+				/* Parity is used, so , 7 bits will be of user data and 1 bit is parity */
+
+				/* read only 7 bits , hence mask the DR with 0X7F */
+				 *pRxBuffer = (pUSARTHandle->pUSARTx->DR  & (uint8_t)0x7F);
 
 			}
 
-			/*  Read data into buffer */
-			*pRxBuffer = pI2CHandle -> pI2Cx -> DR;
-
-			/* Increment the buffer address */
-			pRxBuffer ++;
-
+			/* increment the pRxBuffer */
+			pRxBuffer++;
 		}
-	}
 
-	/* Re enable Acking */
-	if(pI2CHandle->I2C_Config.I2C_AckControl == I2C_ACK_ENABLE){
-
-		I2C_ManageAcking(pI2CHandle ->pI2Cx, I2C_ACK_ENABLE);
 	}
 
 
-}
-
-
-
-/******************************************************************************
- * @fn			- I2C_SlaveReceiveData
- *
- * @brief		-
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-
- *
- * @note		-
- */
-uint8_t I2C_SlaveReceiveData(I2C_RegDef_t *pI2Cx){
-
-	return pI2Cx ->DR;
-
-
-}
-
-
-
-
-/******************************************************************************
- * @fn			- I2C_SlaveSendData
- *
- * @brief		-
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-
- *
- * @note		-
- */
-void I2C_SlaveSendData(I2C_RegDef_t *pI2Cx, uint8_t data){
-
-	/* load data into the DR */
-	pI2Cx -> DR = data;
-
 
 }
 
@@ -613,8 +579,10 @@ void I2C_SlaveSendData(I2C_RegDef_t *pI2Cx, uint8_t data){
 
 
 
+
+
 /******************************************************************************
- * @fn			- I2C_MasterSendDataIT
+ * @fn			- USART_SendDataIT
  *
  * @brief		-
  *
@@ -622,83 +590,60 @@ void I2C_SlaveSendData(I2C_RegDef_t *pI2Cx, uint8_t data){
  * @param[in]	-
  * @param[in]	-
  *
- * @return		- returns the api state : I2C_STATUS_BUSY_TX /I2C_STATUS_BUSY_RX /I2C_STATUS_READY
+ * @return		- returns the api state : USART_STATUS_BUSY_TX /USART_STATUS_BUSY_RX /USART_STATUS_READY
  *
  * @note		-
  */
-uint8_t  I2C_MasterSendDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr){
+uint8_t  USART_SendDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pTxBuffer, uint32_t Len){
 
-	uint8_t busystate = pI2CHandle -> TxRxState;
+	uint8_t busystate = pUSARTHandle -> TxState;
 
-		if( (busystate != I2C_STATUS_BUSY_TX) && (busystate != I2C_STATUS_BUSY_RX))
-		{
-			pI2CHandle -> TxBuffer = pTxBuffer;
-			pI2CHandle -> TxLen = Len;
-			pI2CHandle -> TxRxState = I2C_STATUS_BUSY_TX;
-			pI2CHandle -> DevAddr = SlaveAddr;
-			pI2CHandle -> Sr = Sr;
+	if(pUSARTHandle ->TxState != USART_STATUS_BUSY_TX) {
 
-			/* Generate START Condition */
-			I2C_GenerateStartCondition(pI2CHandle ->pI2Cx);
+		pUSARTHandle ->TxState = USART_STATUS_BUSY_TX;
+		pUSARTHandle ->TxBuffer = pTxBuffer;
+		pUSARTHandle ->TxLen = Len;
 
-			/* enable ITBUFEN Control Bit */
-			pI2CHandle -> pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITBUFEN);
+		/* Enable TX interrupt */
+		pUSARTHandle ->pUSARTx ->CR1 |= (1 << USART_CR1_TXEIE);
 
-			/* enable ITEVFEN Control Bit */
-			pI2CHandle -> pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITEVTEN);
+	}
 
-			/* ITERREN Control Bit */
-			pI2CHandle -> pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITERREN);
+	return busystate;
+}
+
+
+
+
+/******************************************************************************
+ * @fn			- USART_ReceiveDataIT
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-returns the api state : USART_STATUS_BUSY_TX /USART_STATUS_BUSY_RX /USART_STATUS_READY
+ *
+ * @note		-
+ */
+uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len){
+
+	uint8_t busystate = pUSARTHandle -> RxState;
+
+	if(pUSARTHandle ->RxState != USART_STATUS_BUSY_RX) {
+
+			pUSARTHandle ->RxState = USART_STATUS_BUSY_RX;
+			pUSARTHandle ->RxBuffer = pRxBuffer;
+			pUSARTHandle ->RxLen = Len;
+
+			/* Enable RX interrupt */
+			pUSARTHandle ->pUSARTx ->CR1 |= (1 << USART_CR1_RXNEIE);
 
 		}
 
-		return busystate;
-}
-
-
-
-
-/******************************************************************************
- * @fn			- I2C_MasterReceiveDataIT
- *
- * @brief		-
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-returns the api state : I2C_STATUS_BUSY_TX /I2C_STATUS_BUSY_RX /I2C_STATUS_READY
- *
- * @note		-
- */
-uint8_t I2C_MasterReceiveDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr ){
-
-	uint8_t busystate = pI2CHandle -> TxRxState;
-
-		if( (busystate != I2C_STATUS_BUSY_TX) && (busystate != I2C_STATUS_BUSY_RX))
-		{
-			pI2CHandle->RxBuffer = pRxBuffer;
-			pI2CHandle->RxLen = Len;
-			pI2CHandle->TxRxState = I2C_STATUS_BUSY_RX;
-			pI2CHandle->RxSize = Len; //Rxsize is used in the ISR code to manage the data reception
-			pI2CHandle->DevAddr = SlaveAddr;
-			pI2CHandle->Sr = Sr;
-
-			/*  Generate START Condition */
-			I2C_GenerateStartCondition(pI2CHandle ->pI2Cx);
-
-			/*  enable ITBUFEN Control Bit */
-			pI2CHandle -> pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITBUFEN);
-
-			/* enable ITEVFEN Control Bit */
-			pI2CHandle -> pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITEVTEN);
-
-			/* enable ITERREN Control Bit */
-			pI2CHandle -> pI2Cx -> CR2 |= ( 1 << I2C_CR2_ITERREN);
-
-		}
-
-		return busystate;
+	return busystate;
 }
 
 
@@ -714,215 +659,187 @@ uint8_t I2C_MasterReceiveDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, ui
 /***********************************************************************************************
  * 				Helper Fns
  ****************************************************************************************/
-/******************************************************************************
-* @fn			- I2C_GenerateStartCondition
-*
-* @brief		-This Helper Fn generates the start condition
-*
-* @param[in]	- I2C peripheral base address
-* @param[in]	-
-* @param[in]	-
-*
-* @return		-
-*
-* @note		-
-*/
-static void I2C_GenerateStartCondition (I2C_RegDef_t *pI2Cx){
-
-	/* set START bit in CR1 */
-	pI2Cx -> CR1 |= (1 << I2C_CR1_START);
-
-}
 
 
-/******************************************************************************
-* @fn			- I2C_ExecuteAddressPhase
-*
-* @brief		-This Helper Fn sends the address
-*
-* @param[in]	- I2C peripheral base address
-* @param[in]	- slave address
-* @param[in]	-
-*
-* @return		- none
-*
-* @note		-
-*/
-static void I2C_ExecuteAddressPhase (I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr, uint8_t mode){
 
-	SlaveAddr <<= 1;
+/*****************************************************************
+ * @fn          - USART_HandleRXNEInterrupt
+ *
+ * @brief       -
+ *
+ * @param[in]   - Base address of the USART Handle
+ *
+ * @return      - None
+ *
+ * @Note        - None
+ *
+ *****************************************************************/
+static void USART_HandleRXNEInterrupt (USART_Handle_t *pUSARTHandle){
 
-	if( mode == I2C_MASTER_WR){
-		/*  write mode */
-		SlaveAddr &= ~( 1 );
-	}
-	else if ( mode == I2C_MASTER_RD){
-		/*  read mode */
-		SlaveAddr |= ( 1 );
-	}
-	pI2Cx -> DR = SlaveAddr;
+	if(pUSARTHandle->RxState == USART_STATUS_BUSY_RX)
+	{
+		/*RX is set so receive data */
+		if(pUSARTHandle->RxLen > 0)
+		{
+			/*Check the USART_WordLength to decide whether we are going to receive 9bit of data in a frame or 8 bit */
+			if(pUSARTHandle->USART_Config.USART_DataSize == USART_DATA_9BITS)
+			{
+				/*We are going to receive 9bit data in a frame */
 
-}
+				/*Now, check are we using USART_ParityControl control or not */
+				if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
+				{
+					/*No parity is used. so, all 9bits will be of user data */
 
-/******************************************************************************
-* @fn			- I2C_ClearADDRFlag
-*
-* @brief		-This Helper Fn clears ADDR bit
-*
-* @param[in]	- I2C peripheral base address
-* @param[in]	-
-* @param[in]	-
-*
-* @return		- none
-*
-* @note		-
-*/
-static void I2C_ClearADDRFlag (I2C_Handle_t *pI2CHandle){
+					/*read only first 9 bits so mask the DR with 0x01FF */
+					*((uint16_t*) pUSARTHandle ->RxBuffer) = (pUSARTHandle->pUSARTx->DR  & (uint16_t)0x01FF);
 
-	/* check for device mode */
-	if(pI2CHandle -> pI2Cx ->SR2 & (1 << I2C_SR2_MSL)){
-		/* device in master mode */
-		if(pI2CHandle ->TxRxState == I2C_STATUS_BUSY_RX){
-			/* receives 1 byte data */
-			if(pI2CHandle ->RxSize == 1){
-				/* disable acking  before clears ADDR*/
-				I2C_ManageAcking(pI2CHandle ->pI2Cx, DISABLE);
+					/*Now increment the pRxBuffer two times */
+					pUSARTHandle ->RxBuffer++;
+					pUSARTHandle ->RxBuffer++;
+
+					/* Implement the code to decrement the length */
+					pUSARTHandle ->RxLen --;
+					pUSARTHandle ->RxLen --;
+				}
+				else
+				{
+					/* Parity is used. so, 8bits will be of user data and 1 bit is parity */
+					 *pUSARTHandle ->RxBuffer = (pUSARTHandle->pUSARTx->DR  & (uint8_t)0xFF);
+
+					 /* Now increment the pRxBuffer */
+					 pUSARTHandle->RxBuffer++;
+
+					 /* Implement the code to decrement the length */
+					 pUSARTHandle ->RxLen --;
+				}
 			}
-		}
+			else
+			{
+				/*We are going to receive 8bit data in a frame */
 
-	}
-	else{
-		/* device in slave mode */
-		;
-	}
+				/*Now, check are we using USART_ParityControl control or not */
+				if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
+				{
+					/*No parity is used , so all 8bits will be of user data */
 
-	/* ADDR bit is cleared by reading SR1 followed by SR2 */
-	uint32_t dummyread;
-	dummyread = pI2CHandle -> pI2Cx -> SR1;
-	dummyread = pI2CHandle -> pI2Cx -> SR2;
-	(void)dummyread;
-
-}
-
-
-
-
-/*****************************************************************
- * @fn          - I2C_MasterHandleRXNEInterrupt
- *
- * @brief       -
- *
- * @param[in]   - Base address of the I2C Handle
- *
- * @return      - None
- *
- * @Note        - None
- *
- *****************************************************************/
-static void I2C_MasterHandleRXNEInterrupt (I2C_Handle_t *pI2CHandle){
-
-	if(pI2CHandle -> RxSize == 1){
-		*(pI2CHandle ->RxBuffer) = pI2CHandle -> pI2Cx -> DR;
-		pI2CHandle ->RxLen --;
-	}
-	if(pI2CHandle -> RxSize > 1){
-		if(pI2CHandle ->RxLen == 2){
-			/* disable acking */
-			I2C_ManageAcking(pI2CHandle ->pI2Cx, DISABLE);
-		}
-		*(pI2CHandle ->RxBuffer) = pI2CHandle -> pI2Cx -> DR;
-		pI2CHandle ->RxLen --;
-		pI2CHandle ->RxBuffer ++;
-
-	}
-	if(pI2CHandle -> RxLen == 0){
-		/* generate stop condition if sr disabled */
-		if (pI2CHandle -> Sr == I2C_DISABLE_SR ){
-			I2C_GenerateStartCondition(pI2CHandle ->pI2Cx);
-		}
-		/*resets all members of handle */
-		I2C_CloseReceiveData(pI2CHandle);
-
-		/* notify the application about rx complete */
-		I2C_ApplicationEventCallback(pI2CHandle, I2C_EV_RX_CMPLT);
-
-	}
-
-
-}
-
-
-
-/*****************************************************************
- * @fn          - I2C_MasterHandle TXE Interrupt
- *
- * @brief       -
- *
- * @param[in]   - Base address of the I2C Handle
- *
- * @return      - None
- *
- * @Note        - None
- *
- *****************************************************************/
-static void I2C_MasterHandleTXEInterrupt (I2C_Handle_t *pI2CHandle){
-
-	if(pI2CHandle ->TxRxState == I2C_STATUS_BUSY_TX){
-		if(pI2CHandle ->TxLen > 0){
-			/* load data */
-			pI2CHandle -> pI2Cx ->DR = *(pI2CHandle ->TxBuffer);
-			pI2CHandle ->TxLen --;
-			pI2CHandle ->TxBuffer ++;
-		}
-	}
-
-}
-
-
-
-
-
-
-/*****************************************************************
- * @fn          - I2C_MasterHandle BTF Interrupt
- *
- * @brief       -
- *
- * @param[in]   - Base address of the I2C Handle
- *
- * @return      - None
- *
- * @Note        - None
- *
- *****************************************************************/
-static void I2C_MasterHandleBTFInterrupt (I2C_Handle_t *pI2CHandle){
-
-	if(pI2CHandle ->TxRxState == I2C_STATUS_BUSY_TX){
-		/* chk for TXE flag */
-		if (pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_TXE)){
-			/* both BTF AND TXE are set */
-			if (pI2CHandle ->TxLen == 0){
-				/* 1. Generate stop condition */
-				if(pI2CHandle ->Sr == I2C_DISABLE_SR){
-					I2C_GenerateStopCondition(pI2CHandle ->pI2Cx);
+					/* read 8 bits from DR */
+					 *pUSARTHandle ->RxBuffer = (uint8_t) (pUSARTHandle->pUSARTx->DR  & (uint8_t)0xFF);
 				}
 
-				/* 2. Resets all member elements of handle structure */
-				I2C_CloseSendData(pI2CHandle);
+				else
+				{
+					/* Parity is used, so , 7 bits will be of user data and 1 bit is parity */
 
-				/* 3. notify the application about tx complete */
-				I2C_ApplicationEventCallback (pI2CHandle, I2C_EV_TX_CMPLT);
+					/* read only 7 bits , hence mask the DR with 0X7F */
+					 *pUSARTHandle -> RxBuffer = (uint8_t) (pUSARTHandle->pUSARTx->DR  & (uint8_t)0x7F);
+
+				}
+
+				/* Now , increment the pRxBuffer */
+				pUSARTHandle ->RxBuffer++;
+
+				/* decrement the length */
+				pUSARTHandle ->RxLen --;
 			}
 
-		 }
-	}
-	else if(pI2CHandle ->TxRxState == I2C_STATUS_BUSY_RX){
-		;
+
+		}//if of >0
+
+		if(! pUSARTHandle->RxLen)
+		{
+			/* disable the rxne */
+			pUSARTHandle->pUSARTx->CR1 &= ~( 1 << USART_CR1_RXNEIE );
+			pUSARTHandle->RxState = USART_STATUS_READY;
+			USART_ApplicationEventCallback(pUSARTHandle,USART_EV_RX_CMPLT);
+		}
 	}
 
 
 
 }
+
+
+
+/*****************************************************************
+ * @fn          - USART_Handle TXE Interrupt
+ *
+ * @brief       -
+ *
+ * @param[in]   - Base address of the USART Handle
+ *
+ * @return      - None
+ *
+ * @Note        - None
+ *
+ *****************************************************************/
+static void USART_HandleTXEInterrupt (USART_Handle_t *pUSARTHandle){
+
+	if(pUSARTHandle->TxBusyState == USART_STATUS_BUSY_TX)
+	{
+		/*Keep sending data until Txlen reaches to zero */
+		if(pUSARTHandle->TxLen > 0)
+		{
+			/*Check the USART_WordLength item for 9BIT or 8BIT in a frame */
+			if(pUSARTHandle->USART_Config.USART_DataSize == USART_DATA_9BITS)
+			{
+				/*if 9BIT , load the DR with 2bytes masking the bits other than first 9 bits */
+				pdata = (uint16_t*) pUSARTHandle ->TxBuffer;
+
+				/* check for USART_ParityControl */
+				if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
+				{
+					/*loading only first 9 bits , so we have to mask with the value 0x01FF */
+					pUSARTHandle->pUSARTx->DR = (*pdata & (uint16_t)0x01FF);
+
+					/* No parity is used in this transfer , so, 9bits of user data will be sent */
+					/*Implement the code to increment pTxBuffer twice */
+					pUSARTHandle ->TxBuffer++;
+					pUSARTHandle ->TxBuffer++;
+
+					/*Implement the code to decrement the length */
+					pUSARTHandle ->TxLen --;
+					pUSARTHandle ->TxLen --;
+
+				}
+				else
+				{
+					/* Parity bit is used in this transfer . so , 8bits of user data will be sent */
+					/* The 9th bit will be replaced by parity bit by the hardware */
+					pUSARTHandle ->pUSARTx ->DR = * pUSARTHandle ->TxBuffer;
+					pUSARTHandle ->TxBuffer++;
+
+					/* decrement the length */
+					pUSARTHandle ->TxLen --;
+				}
+			}
+			else
+			{
+				/*This is 8bit data transfer */
+				pUSARTHandle->pUSARTx->DR = (*pUSARTHandle ->TxBuffer  & (uint8_t)0xFF);
+
+				/* Increment the buffer address */
+				pUSARTHandle ->TxBuffer++;
+
+				/* decrement the length */
+				pUSARTHandle ->TxLen --;
+			}
+
+		}
+		if (pUSARTHandle->TxLen == 0 )
+		{
+			/* TxLen is zero */
+			/* clear the TXEIE bit (disable interrupt for TXE flag ) */
+			pUSARTHandle ->pUSARTx ->CR1 &= ~(1 << USART_CR1_TXEIE);
+		}
+	}
+
+
+
+}
+
+
+
 
 
 
@@ -933,7 +850,7 @@ static void I2C_MasterHandleBTFInterrupt (I2C_Handle_t *pI2CHandle){
  *******************************************************************************************/
 
 /******************************************************************************
- * @fn			- I2C_IRQInterruptConfig
+ * @fn			- USART_IRQInterruptConfig
  *
  * @brief		-
  *
@@ -945,7 +862,7 @@ static void I2C_MasterHandleBTFInterrupt (I2C_Handle_t *pI2CHandle){
  *
  * @note		-
  */
-void I2C_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi){
+void USART_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi){
 
 	if(EnorDi == ENABLE){
 		if(IRQNumber <= 31){
@@ -990,7 +907,7 @@ void I2C_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi){
 }
 
 /******************************************************************************
- * @fn			- I2C_IRQPriorityConfig
+ * @fn			- USART_IRQPriorityConfig
  *
  * @brief		-
  *
@@ -1002,7 +919,7 @@ void I2C_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi){
  *
  * @note		-
  */
-void I2C_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority){
+void USART_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority){
 
 	uint8_t iprx = IRQNumber / 4;  			/* ipr reg number offset address */
 	uint8_t iprx_section = IRQNumber % 4;    /* position in iprx reg */
@@ -1017,7 +934,7 @@ void I2C_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority){
 
 
 /******************************************************************************
- * @fn			- I2C_EV_IRQHandling
+ * @fn			- USART_IRQHandling
  *
  * @brief		-
  *
@@ -1027,204 +944,191 @@ void I2C_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority){
  *
  * @return		-
  *
- * @note		- Interrupt handling for different I2C events (refer SR1)
+ * @note		- Interrupt handling for different USART events (refer SR1)
  */
-void I2C_EV_IRQHandling(I2C_Handle_t *pI2CHandle){
+void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 
-	/*Interrupt handling for both master and slave mode of a device */
+	uint32_t temp1 , temp2, temp3, pdata;
 
-	uint32_t temp1, temp2, temp3;
+/*************************Check for TC flag ********************************************/
 
-	temp1 = pI2CHandle -> pI2Cx -> CR2 & (1 << I2C_CR2_ITEVTEN);
-	temp2 = pI2CHandle -> pI2Cx -> CR2 & (1 << I2C_CR2_ITBUFEN);
-	temp3 = pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_SB);
+	/* check the state of TC bit in the SR */
+	temp1 = pUSARTHandle->pUSARTx->SR & ( 1 << USART_SR_TC);
 
-	/*1. Handle For interrupt generated by SB event */
-	/*	Note : SB flag is only applicable in Master mode */
-	if(temp1 && temp3){
-		/* Start condition is generated succefully. Send address with read or wr */
-		uint8_t mode;
-		if(pI2CHandle -> TxRxState == I2C_STATUS_BUSY_TX) mode = I2C_MASTER_WR;
-		else if (pI2CHandle -> TxRxState == I2C_STATUS_BUSY_RX) mode = I2C_MASTER_RD;
-		I2C_ExecuteAddressPhase(pI2CHandle ->pI2Cx, pI2CHandle ->DevAddr, mode);
-	}
+	 /*check the state of TCEIE bit */
+	temp2 = pUSARTHandle->pUSARTx->TODO & ( 1 << USART_CR1_TCIE);
 
+	if(temp1 && temp2 )
+	{
+		/* this interrupt is because of TC */
 
-	/* 2. Handle For interrupt generated by ADDR event */
-	/* Note : When master mode : Address is sent */
-	/*	When Slave mode   : Address matched with own address */
-	temp3 = pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_ADDR);
-	if(temp1 && temp3){
-		/* clear ADDR flag  */
-		I2C_ClearADDRFlag(pI2CHandle);
+		/* close transmission and call application callback if TxLen is zero */
+		if ( pUSARTHandle->TxState == USART_BUSY_IN_TX)
+		{
+			/* Check the TxLen . If it is zero then close the data transmission */
+			if(! pUSARTHandle->TxLen )
+			{
+				/* clear the TC flag */
+				pUSARTHandle->pUSARTx->SR &= ~( 1 << USART_SR_TC);
 
-	}
+				/* clear the TCIE control bit */
+				pUSARTHandle->pUSARTx->CR1 &= ~( 1 << USART_CR1_TCIE);
 
+				/*Reset the application state */
+				pUSARTHandle->TxState = USART_READY;
 
-	/* 3. Handle For interrupt generated by BTF(Byte Transfer Finished) event */
-	temp3 = pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_BTF);
-	if(temp1 && temp3){
-		/* BTF flag is set */
-		if(pI2CHandle -> pI2Cx ->SR2 & (1 << I2C_SR2_MSL)){
-			/* device in master mode data transmission */
-			I2C_MasterHandleBTFInterrupt(pI2CHandle);
-		}
+				/*Reset Buffer address to NULL */
+				pUSARTHandle ->TxBuffer = NULL;
 
-	}
+				//Reset the length to zero
+				pUSARTHandle ->TxLen = 0;
 
-
-	/* 4. Handle For interrupt generated by STOPF event */
-	/* Note : Stop detection flag is applicable only slave mode . For master this flag will never be set */
-	temp3 = pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_STOPF);
-	if(temp1 && temp3){
-		/* STOPF flag is set */
-		/* Clear STOPF flag  ie read SR1 folloerd by write CR1 regs*/
-		pI2CHandle->pI2Cx->CR1 |= 0x0000;
-
-		/*Notify the app that STOPF generated by master */
-		I2C_ApplicationEventCallback(pI2CHandle, I2C_EV_STOP);
-
-	}
-
-
-	/* 5. Handle For interrupt generated by TXE event */
-	temp3 = pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_TXE);
-	if(temp1 && temp2 && temp3){
-		/* TXE flag is set */
-		/*chk for device mode */
-		if(pI2CHandle -> pI2Cx ->SR2 & (1 << I2C_SR2_MSL)){
-			/* device in master mode data transmission */
-			I2C_MasterHandleTXEInterrupt(pI2CHandle);
-		}
-		else{
-			/* devive is in slave mode */
-			/* chk if the device is in transmit mode */
-			if(pI2CHandle -> pI2Cx -> SR2 & (1 << I2C_SR2_TRA)){
-				I2C_ApplicationEventCallback(pI2CHandle, I2C_EV_DATA_REQ);
+				//Call the applicaton call back with event USART_EVENT_TX_CMPLT
+				USART_ApplicationEventCallback(pUSARTHandle,USART_EV_TX_CMPLT);
 			}
 		}
-
 	}
 
+/*************************Check for TXE flag ********************************************/
 
-	/* 6. Handle For interrupt generated by RXNE event */
-	temp3 = pI2CHandle -> pI2Cx -> SR1 & (1 << I2C_SR1_RXNE);
-	if(temp1 && temp2 && temp3){
-		/* RXNE flag is set */
-		/*chk for device mode */
-		if(pI2CHandle -> pI2Cx ->SR2 & (1 << I2C_SR2_MSL)){
-			/* device in master mode data reception */
-			I2C_MasterHandleRXNEInterrupt(pI2CHandle);
+	/*check the state of TXE bit in the SR */
+	temp1 = pUSARTHandle->pUSARTx->SR & ( 1 << USART_SR_TXE);
 
-		}
-		else{
-			/* slave mode */
-			/* chk if the device is in transmit mode */
-			if(!(pI2CHandle -> pI2Cx -> SR2 & (1 << I2C_SR2_TRA))){
-				I2C_ApplicationEventCallback(pI2CHandle, I2C_EV_DATA_RCV);
-			}
-		}
+	/*check the state of TXEIE bit in CR1 */
+	temp2 = pUSARTHandle->pUSARTx->CR1 & ( 1 << USART_CR1_TXEIE);
+
+
+	if(temp1 && temp2 )
+	{
+		/* this interrupt is because of TXE */
+		USART_HandleTXEInterrupt(pUSARTHandle);
 
 
 	}
 
+/*************************Check for RXNE flag ********************************************/
 
-}
-
-
-
-
-/******************************************************************************
- * @fn			- I2C_ER_IRQHandling
- *
- * @brief		-
- *
- * @param[in]	-
- * @param[in]	-
- * @param[in]	-
- *
- * @return		-
- *
- * @note		-
- */
-void I2C_ER_IRQHandling(I2C_Handle_t *pI2CHandle){
-
-	uint32_t temp1,temp2;
-
-	/*Know the status of  ITERREN control bit in the CR2 */
-	temp2 = (pI2CHandle->pI2Cx->CR2) & ( 1 << I2C_CR2_ITERREN);
+	temp1 = pUSARTHandle->pUSARTx->SR & ( 1 << USART_SR_RXNE);
+	temp2 = pUSARTHandle->pUSARTx->CR1 & ( 1 << USART_CR1_RXNEIE);
 
 
-	/*Check for Bus error */
-	temp1 = (pI2CHandle->pI2Cx->SR1) & ( 1<< I2C_SR1_BERR);
+	if(temp1 && temp2 )
+	{
+		/*this interrupt is because of rxne */
+		USART_HandleRXNEInterrupt(pUSARTHandle);
+
+	}
+
+
+/*************************Check for CTS flag ********************************************/
+/* Note : CTS feature is not applicable for UART4 and UART5 */
+
+	/* check the status of CTS bit in the SR */
+	temp1 = pUSARTHandle ->pUSARTx ->SR & (1 << USART_SR_CTS);
+
+	/* check the state of CTSE bit in CR1 */
+	temp2 = pUSARTHandle->pUSARTx->CR3 & ( 1 << USART_CR3_CTSE);
+
+	/* check the state of CTSIE bit in CR3 (This bit is not available for UART4 & UART5.) */
+	temp3 = pUSARTHandle->pUSARTx->CR3 & ( 1 << USART_CR3_CTSIE);
+
+
 	if(temp1  && temp2 )
 	{
-		/* This is Bus error */
-		/* clear the buss error flag */
-		pI2CHandle->pI2Cx->SR1 &= ~( 1 << I2C_SR1_BERR);
+		/* clear the CTS flag in SR */
+		pUSARTHandle ->pUSARTx ->SR =& ~(1 << USART_SR_CTS);
 
-	   /* notify the application about the error */
-	   I2C_ApplicationEventCallback(pI2CHandle,I2C_ERROR_BERR);
+		/* this interrupt is because of cts */
+		USART_ApplicationEventCallback(pUSARTHandle,USART_EV_CTS);
 	}
 
-	/* Check for arbitration lost error */
-	temp1 = (pI2CHandle->pI2Cx->SR1) & ( 1 << I2C_SR1_ARLO );
-	if(temp1  && temp2)
+/*************************Check for IDLE detection flag ********************************************/
+
+	/* check the status of IDLE flag bit in the SR */
+	temp1 = pUSARTHandle ->pUSARTx ->SR & (1 << USART_SR_IDLE);
+
+	/* check the state of IDLEIE bit in CR1 */
+	temp2 = pUSARTHandle->pUSARTx->CR3 & ( 1 << USART_CR1_IDLEIE);
+
+
+	if(temp1 && temp2)
 	{
-		/*This is arbitration lost error*/
-		/* clear the arbitration lost error flag */
-		pI2CHandle->pI2Cx->SR1 &= ~( 1 << I2C_SR1_ARLO);
+		/* clear the IDLE flag. read SR followed by read DR */
+		/* dummy read */
+		temp1 = pUSARTHandle ->pUSARTx ->SR;
+		temp1 = pUSARTHandle ->pUSARTx ->DR;
 
-		/* notify the application about the error */
-		I2C_ApplicationEventCallback(pI2CHandle,I2C_ERROR_ARLO);
+		/* this interrupt is because of idle */
+		USART_ApplicationEventCallback(pUSARTHandle,USART_EV_IDLE);
 	}
 
-	/* Check for ACK failure  error */
+/*************************Check for Overrun detection flag ********************************************/
 
-	temp1 = (pI2CHandle->pI2Cx->SR1) & ( 1 << I2C_SR1_AF);
-	if(temp1  && temp2)
+	/* check the status of ORE flag  in the SR */
+	temp1 = pUSARTHandle->pUSARTx->SR & USART_SR_ORE;
+
+	/* check the status of RXNEIE  bit in the CR1 */
+	temp2 = pUSARTHandle->pUSARTx->CR1 & USART_CR1_RXNEIE;
+
+
+	if(temp1  && temp2 )
 	{
-		/* This is ACK failure error */
-		/* clear the ACK failure error flag */
-		pI2CHandle->pI2Cx->SR1 &= ~( 1 << I2C_SR1_AF);
+		/*Need not to clear the ORE flag here, instead give an api for the application to clear the ORE flag .*/
 
-		/* notify the application about the error */
-		I2C_ApplicationEventCallback(pI2CHandle,I2C_ERROR_AF);
+		/* this interrupt is because of Overrun error */
+		USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ORE);
 	}
 
-	/* Check for Overrun/underrun error */
-	temp1 = (pI2CHandle->pI2Cx->SR1) & ( 1 << I2C_SR1_OVR);
-	if(temp1  && temp2)
+
+
+/*************************Check for Error Flag ********************************************/
+
+/* Noise Flag, Overrun error and Framing Error in multibuffer communication */
+//The blow code will get executed in only if multibuffer mode is used. */
+
+	temp2 =  pUSARTHandle->pUSARTx->CR3 & ( 1 << USART_CR3_EIE) ;
+
+	if(temp2 )
 	{
-		/* This is Overrun/underrun */
-		/* clear the Overrun/underrun error flag */
-		pI2CHandle->pI2Cx->SR1 &= ~( 1 << I2C_SR1_OVR);
+		temp1 = pUSARTHandle->pUSARTx->SR;
+		if(temp1 & ( 1 << USART_SR_FE))
+		{
+			/*
+				This bit is set by hardware when a de-synchronization, excessive noise or a break character
+				is detected. It is cleared by a software sequence (an read to the USART_SR register
+				followed by a read to the USART_DR register).
+			*/
+			USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ERR_FE);
+		}
 
-		/* notify the application about the error */
-		I2C_ApplicationEventCallback(pI2CHandle,I2C_ERROR_OVR);
+		if(temp1 & ( 1 << USART_SR_NE) )
+		{
+			/*
+				This bit is set by hardware when noise is detected on a received frame. It is cleared by a
+				software sequence (an read to the USART_SR register followed by a read to the
+				USART_DR register).
+			*/
+			USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ERR_NE);
+		}
+
+		if(temp1 & ( 1 << USART_SR_ORE) )
+		{
+			USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ERR_ORE);
+		}
 	}
-
-	/* Check for Time out error */
-	temp1 = (pI2CHandle->pI2Cx->SR1) & ( 1 << I2C_SR1_TIMEOUT);
-	if(temp1  && temp2)
-	{
-		/* This is Time out error */
-		/* clear the Time out error flag */
-		pI2CHandle->pI2Cx->SR1 &= ~( 1 << I2C_SR1_TIMEOUT);
-
-		/* notify the application about the error */
-		I2C_ApplicationEventCallback(pI2CHandle,I2C_ERROR_TIMEOUT);
-	}
-
 
 
 }
+
+
+
+
 
 
 /******************************************************************************
  * 						Call back Fns
  ******************************************************************************/
-__weak void I2C_ApplicationEventCallback (I2C_Handle_t *pI2CHandle, uint8_t AppEv){
+__weak void USART_ApplicationEventCallback (USART_Handle_t *pUSARTHandle, uint8_t AppEv) {
 
 	/* This is a weak function. Application may override it */
 }

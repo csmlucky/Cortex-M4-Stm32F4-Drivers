@@ -1,116 +1,134 @@
 /*
- * stm32f446xx_i2c_driver.h
+ * stm32f446xx_usart_driver.h
  *
- *  Created on: Aug 15, 2025
+ *  Created on: Aug 22, 2025
  *      Author: csmla
  */
 
-#ifndef INC_STM32F446XX_I2C_DRIVER_H_
-#define INC_STM32F446XX_I2C_DRIVER_H_
+#ifndef INC_STM32F446XX_USART_DRIVER_H_
+#define INC_STM32F446XX_USART_DRIVER_H_
 
 
 #include "stm32f446xx.h"
 
 /*
- * I2C config structure
+ * USART config structure
  */
 typedef struct{
- uint32_t I2C_SCLSpeed;				/* I2C Serial Clock speed Possible values @ I2C_SCLK_SPEED */
- uint8_t I2C_DeviceAddress;
- uint8_t I2C_AckControl;  			/* Ack Control Possible values @ I2C_ACK */
- uint32_t I2C_FMDutyCycle;			/* Fast mode Duty cycle. Possible values @I2C_FM_DUTY */
+ uint32_t USART_BaudRate;			/* USART Baud rate possible values @USART_BAUD */
+ uint8_t USART_Mode;				/* possible values @USART_MODE */
+  uint8_t USART_DataSize;			/* Frame size values @USART_DATA_SIZE  */
+ uint8_t USART_NoOfStopbits;		/* stop bits 1 or 2 @USART_STOP_BITS*/
+ uint8_t USART_ParityControl;		/* Parity @USART_PARITY */
+ uint8_t USART_HWFlowControl;		/* HW flow control possible values @HW_FLOW_CTRL */
 
-}I2C_Config_t;
+}USART_Config_t;
 
 
 /*
- * Handle structure for a I2C
+ * Handle structure for a USART
  */
 typedef struct{
-	I2C_RegDef_t *pI2Cx;   				/* base address of I2C (x -> 1,2,3) */
-	I2C_Config_t I2C_Config;
+	USART_RegDef_t *pUSARTx;   			/* base address of USARTx (x -> 1,2,3,4,5,6) */
+	USART_Config_t USART_Config;
 	uint8_t *TxBuffer;					/* to store addr of txbuff */
 	uint8_t *RxBuffer;					/* to store add of rxbuff */
-	uint8_t TxRxState;					/* to store communication state. possible values @ I2C_STATUS */
+	uint8_t TxState;					/* to store communication state. possible values @ USART_STATUS */
+	uint8_t RxState;					/* to store communication state. possible values @ USART_STATUS */
 	uint32_t RxLen;
 	uint32_t TxLen;
-	uint32_t RxSize;					/* to store Rx size */
-	uint8_t Sr;							/* to store repeated start value */
-	uint8_t DevAddr;					/* to store slave/device addr */
 
-}I2C_Handle_t;
+}USART_Handle_t;
 
 
 /*
- * @I2C_SCLK_SPEED
+ * @USART_BAUD
  */
-#define I2C_SCLK_SPEED_SM			100000
-#define I2C_SCLK_SPEED_FM4K			400000
-#define I2C_SCLK_SPEED_FM2K			100000
+#define USART_BAUD_9600						9600
+#define USART_BAUD_230400		    		230400
+#define USART_BAUD_115200					115200
+#define USART_STD_BAUD_2M 					2000000
+#define SUART_STD_BAUD_3M 					3000000
 
 
 /*
- * @I2C_ACK
+ * USART_DATA
  */
-#define I2C_ACK_ENABLE				1
-#define I2C_ACK_DISABLE				0
+#define USART_DATA_8BITS			0
+#define USART_DATA_9BITS			1
+
+/*
+ * USART_STOP_BITS
+ */
+#define USART_STOPBITS_1			0
+#define USART_STOPBITS_2			2
+#define USART_STOPBITS_1_5			3
+#define USART_STOPBITS_0_5			1
+
 
 
 /*
- * @I2C_FM_DUTY
+ * @USART_PARITY
  */
-#define I2C_FM_DUTY_2				0
-#define I2C_DUTY_16_9				1
+#define USART_PARITY_DISABLE		0
+#define USART_PARITY_EN_ODD			1
+#define USART_PARITY_EN_EVEN		2
+
+/*
+ * @USART_HW_FLOW_CTRL
+ */
+#define USART_HW_FLOW_CTRL_NONE    	0
+#define USART_HW_FLOW_CTRL_CTS    	1
+#define USART_HW_FLOW_CTRL_RTS    	2
+#define USART_HW_FLOW_CTRL_CTS_RTS	3
+
+
+/*
+ * @USART_MODE
+ */
+#define USART_MODE_ONLY_TX			0
+#define USART_MODE_ONLY_RX			1
+#define USART_MODE_TXRX				2
 
 
 
 /*
- * I2C related status flag definitions
+ * USART related status flag definitions
  */
-#define I2C_FLAG_TXE        ( 1 << I2C_SR1_TXE )
-#define I2C_FLAG_RXNE       ( 1 << I2C_SR1_RXNE )
-#define I2C_FLAG_SB         ( 1 << I2C_SR1_SB )
-#define I2C_FLAG_ADDR       ( 1 << I2C_SR1_ADDR )
-#define I2C_FLAG_BTF        ( 1 << I2C_SR1_BTF )
-#define I2C_FLAG_STOPF      ( 1 << I2C_SR1_STOPF )
-#define I2C_FLAG_BERR       ( 1 << I2C_SR1_BERR )
-#define I2C_FLAG_ARLO       ( 1 << I2C_SR1_ARLO )
-#define I2C_FLAG_AF         ( 1 << I2C_SR1_AF )
-#define I2C_FLAG_OVR        ( 1 << I2C_SR1_OVR )
-#define I2C_FLAG_TIMEOUT    ( 1 << I2C_SR1_TIMEOUT )
+#define USART_FLAG_PE        ( 1 << USART_SR_PE )
+#define USART_FLAG_FE        ( 1 << USART_SR_FE )
+#define USART_FLAG_NF        ( 1 << USART_SR_NF)
+#define USART_FLAG_ORE       ( 1 << USART_SR_ORE )
+#define USART_FLAG_IDLE      ( 1 << USART_SR_IDLE )
+#define USART_FLAG_RXNE      ( 1 << USART_SR_RXNE )
+#define USART_FLAG_TC        ( 1 << USART_SR_TC )
+#define USART_FLAG_TXE       ( 1 << USART_SR_TXE )
+#define USART_FLAG_LBD       ( 1 << USART_SR_LBD )
+#define USART_FLAG_CTS       ( 1 << USART_SR_CTS )
 
-#define I2C_DISABLE_SR      RESET
-#define I2C_ENABLE_SR       SET
+
 
 
 /*
- * I2C application events macros
+ * USART application events macros
  */
-#define I2C_EV_TX_CMPLT         0
-#define I2C_EV_RX_CMPLT         1
-#define I2C_EV_STOP             2
-#define I2C_ERROR_BERR          3
-#define I2C_ERROR_ARLO          4
-#define I2C_ERROR_AF            5
-#define I2C_ERROR_OVR           6
-#define I2C_ERROR_TIMEOUT       7
-#define I2C_EV_DATA_REQ         8
-#define I2C_EV_DATA_RCV         9
+#define USART_EV_TX_CMPLT         	0
+#define USART_EV_RX_CMPLT         	1
+#define USART_EV_CTS			  	2
+#define USART_EV_IDLE			  	3
+#define USART_EV_ERR_ORE			4
+#define USART_EV_ERR_NE				5
+
 
 
 /*
- * @I2C_STATUS
- * I2C_Status macros
+ * @USART_STATUS
+ * USART_Status macros
  */
-#define I2C_STATUS_READY		0
-#define I2C_STATUS_BUSY_TX		1
-#define I2C_STATUS_BUSY_RX		2
+#define USART_STATUS_READY			0
+#define USART_STATUS_BUSY_TX		1
+#define USART_STATUS_BUSY_RX		2
 
-/*
- * READ / WRITE mode
- */
-#define I2C_MASTER_WR			0
-#define I2C_MASTER_RD			1
 
 
 
@@ -121,58 +139,53 @@ typedef struct{
 /*
  * Peripheral clock setup
  */
-void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
+void USART_PeriClockControl(USART_RegDef_t *pUSARTx, uint8_t EnorDi);
 
 /*
  * Peripheral init/ deint
  */
-void I2C_Init(I2C_Handle_t *pI2CHandle);
-void I2C_DeInit(I2C_RegDef_t *pI2Cx);
+void USART_Init(USART_Handle_t *pUSARTHandle);
+void USART_DeInit(USART_RegDef_t *pUSARTx);
 
 /*
  * Peripheral read/ write
  */
-void I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAdd, uint8_t Sr);
-void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr);
+void USART_SendData(USART_Handle_t *pUSARTHandle, uint8_t *pTxBuffer, uint32_t Len);
+void USART_ReceiveData(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len);
 
-void I2C_SlaveSendData(I2C_RegDef_t *pI2Cx, uint8_t data);
-uint8_t I2C_SlaveReceiveData(I2C_RegDef_t *pI2Cx);
 
-uint8_t I2C_MasterSendDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len, uint8_t SlaveAdd, uint8_t Sr);
-uint8_t I2C_MasterReceiveDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr);
+uint8_t USART_SendDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pTxBuffer, uint32_t Len);
+uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len);
 
-void I2C_CloseSendData(I2C_Handle_t *pI2CHandle);
-void I2C_CloseReceiveData(I2C_Handle_t *pI2CHandle);
+void USART_CloseSendData(USART_Handle_t *pUSARTHandle);
+void USART_CloseReceiveData(USART_Handle_t *pUSARTHandle);
 
 /*
  * peripheral Interrupt
  */
-void I2C_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
-void I2C_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority);
-void I2C_EV_IRQHandling(I2C_Handle_t *pI2CHandle);
-void I2C_ER_IRQHandling(I2C_Handle_t *pI2CHandle);
+void USART_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
+void USART_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority);
+void USART_IRQHandling(USART_Handle_t *pUSARTHandle);
 
 
 /*
  * Application call backs
  */
-void I2C_ApplicationEventCallback (I2C_Handle_t *pI2CHandle, uint8_t AppEv);
+void USART_ApplicationEventCallback (USART_Handle_t *pUSARTHandle, uint8_t AppEv);
 
 /*
  * peripheral Control
  */
-uint8_t I2C_GetFlagStatus(I2C_RegDef_t *pI2Cx, uint8_t flagName);
-uint32_t I2C_GetPCLK1Value(void);
+uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx, uint8_t flagName);
 
-void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
+void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnorDi);
 
-void I2C_ManageAcking(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
+void USART_EnableDisableInterrupt(USART_RegDef_t *pUSARTx, uint8_t EnorDi);
 
-void I2C_GenerateStopCondition (I2C_RegDef_t *pI2Cx);
+void USART_ClearFlag(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName);
 
-void I2C_SlaveEnableDisableInterrupt(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
-
+void USART_SetBaudRate(USART_RegDef_t *pUSARTx, uint32_t BaudRate);
 
 
 
-#endif /* INC_STM32F446XX_I2C_DRIVER_H_ */
+#endif /* INC_STM32F446XX_USART_DRIVER_H_ */

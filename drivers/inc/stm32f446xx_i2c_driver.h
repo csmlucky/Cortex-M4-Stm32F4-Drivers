@@ -162,7 +162,7 @@ void I2C_ApplicationEventCallback (I2C_Handle_t *pI2CHandle, uint8_t AppEv);
  * peripheral Control
  */
 uint8_t I2C_GetFlagStatus(I2C_RegDef_t *pI2Cx, uint8_t flagName);
-uint32_t I2C_GetPCLK1Value(void);
+
 
 void I2C_PeripheralControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
 
