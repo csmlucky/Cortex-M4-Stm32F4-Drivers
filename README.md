@@ -2,7 +2,7 @@
 # STM32 Peripheral Driver Development (Udemy Exercises)
 
 This repository contains my hands-on implementation of STM32F4xx peripheral drivers based on the **STM32 Embedded Driver Development Udemy course**.  
-All drivers are written in **bare-metal C** at the register level (no HAL/LL libraries).
+All drivers are written in **bare-metal C** at the register level (no HAL/LL libraries).Each driver includes **API implementation** along with example applications.
 
 ## Features
 - GPIO driver (input/output, interrupts)
@@ -26,17 +26,18 @@ Each driver was verified by:
 
 
 ## Repository Structure
-/Drivers
-|--/inc
-   |--gpio_driver.h
-   |--spi_driver.h
-   |--i2c_driver.h
-   |--usart_driver.h
-   |--stm32f446xx.h
-|--/src
-   |--gpio_driver.c
-   |--spi_driver.c
-   |--i2c_driver.c
-   |--usart_driver.c
+/drivers/inc
+├──gpio_driver.h
+├──spi_driver.h
+├──i2c_driver.h
+├──usart_driver.h
+├──stm32f446xx.h
+
+/drivers/src
+├──gpio_driver.c
+├──spi_driver.c
+├──i2c_driver.c
+├──usart_driver.c
+
 
 

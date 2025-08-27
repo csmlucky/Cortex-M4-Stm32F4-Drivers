@@ -3,7 +3,9 @@
  *
  *  Created on: Aug 19, 2025
  *      Author: csmla
- *      Fn : I2C1_Master Sends message to the slave
+ *      Fn : I2C1_Master Sends commands to slave and receive data from slave
+ *      Commands: 0x51 -> gets length of data from slave
+ *      		  0x52 -> gets data from slave
  *      I2C-1 standard mode 100khz,
  *      SCLK ->100khz,
  *
@@ -26,9 +28,18 @@
 #define MY_ADDR 				0x40
 #define SLAVE_ADDR				0x60
 
+/* commands */
+#define CMD_LEN					0x51
+#define CMD_DATA				0x52
+
+
+
 I2C_Handle_t I2C1Handle;
 
-char  test_data[] = "We are testing I2C master Tx\n";
+uint8_t  receive_data[32];
+uint8_t command;
+uint16_t receive_len;
+
 
 
 
@@ -126,15 +137,27 @@ int main (void){
 	I2C_PeripheralControl(I2C1, ENABLE);
 
 	/* configure ack control in CR1 after enabling the peripheral i2c*/
-	I2C1Handle.pI2Cx -> CR1 |= (I2C1Handle.I2C_Config.I2C_AckControl << 10);
+	I2C_ManageAcking(I2C1, I2C_ACK_ENABLE);
 
 	while(1){
 
 		/* send command after the button is pressed */
 		WAIT_ForButtonPress();
 
-		/* send data */
-		I2C_MasterSendData(&I2C1Handle, (uint8_t *)test_data, strlen(test_data), SLAVE_ADDR, I2C_DISABLE_SR);
+		/* send CMD_LEN */
+		command = CMD_LEN;
+		I2C_MasterSendData(&I2C1Handle, &command, 1, SLAVE_ADDR, I2C_ENABLE_SR);
+
+		/*receive len of the data from slave */
+		I2C_MasterReceiveData(&I2C1Handle, (uint8_t *) &receive_len, 1, SLAVE_ADDR, I2C_ENABLE_SR);
+
+		/* send CMD_LEN */
+		command = CMD_DATA;
+		I2C_MasterSendData(&I2C1Handle, &command, 1, SLAVE_ADDR, I2C_ENABLE_SR);
+
+		/*receive data from slave */
+		I2C_MasterReceiveData(&I2C1Handle, receive_data, receive_len , SLAVE_ADDR, I2C_DISABLE_SR);
+
 	}
 
 
