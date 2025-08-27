@@ -1,0 +1,20 @@
+# Ignore build directories
+/build/
+/Debug/
+/Release/
+
+# Ignore compiled binaries
+*.elf
+*.hex
+*.bin
+
+# Ignore object and dependency files
+*.o
+*.d
+
+# IDE-specific files
+*.log
+*.user
+*.suo
+*.DS_Store
+*.swp
