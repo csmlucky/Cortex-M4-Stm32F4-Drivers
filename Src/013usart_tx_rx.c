@@ -4,7 +4,7 @@
  *  Created on: Aug 25, 2025
  *      Author: csmla
  *
- *      Fn: Test usart 2 in tx mode
+ *      Fn: Send 3 messages to PC and receive them back as response
  *      pins: Tx ->PA2 , Rx ->PA3
  *      baud rate: 115200
  *      frame : start, 8 bit data, 1 stopbit, no parity
@@ -13,6 +13,7 @@
 
 #include "stm32f446xx.h"
 #include <string.h>
+#include <stdio.h>
 
 
 #define LOW 					0
@@ -21,9 +22,18 @@
 #define BTN_NOT_PRESSED 		HIGH
 
 
-char* tx_data = "Testing UART1 in tx mode at 115200 baud rate";
-uint8_t rx_data[50];
+char* tx_msg[3] = { "Testing uart tx-rx mode",
+					  "Sending mag to PC",
+					  "Hello hyper terminal"
+					};
+
+uint8_t rx_data[1024];
 USART_Handle_t USART2Handle;
+uint8_t msg_cnt;
+uint32_t rx_len;
+
+/* app -flags */
+uint8_t rx_cmplt;
 
 
 /*
@@ -111,6 +121,8 @@ void USART2_Inits(){
 
 int main (void){
 
+	uint8_t dummy_read;
+
 	/* Initialize the button */
 	GPIO_Button_Inits();
 
@@ -134,9 +146,31 @@ int main (void){
 
 		WAIT_ForButtonPress();
 
+		/* wait until uart tx free before tranmitting msg*/
+		while (USART_SendDataIT(&USART2Handle, (uint8_t *)tx_msg[msg_cnt], strlen(tx_msg[msg_cnt])) == USART_STATUS_BUSY_TX) ;
 
-		while (!(USART_SendDataIT(&USART2Handle, (uint8_t *)tx_data, strlen(tx_data)) == USART_STATUS_BUSY_TX)) ;
+		/* will receive the same msg that is transmitted */
+		rx_len = strlen(tx_msg[msg_cnt]);
 
+		/*uart flush */
+		dummy_read = USART2Handle.pUSARTx-> SR;
+		dummy_read = USART2Handle.pUSARTx ->DR;
+		(void)dummy_read;
+
+		/* wait until uart rx free before receiving the message */
+		while(USART_ReceiveDataIT(&USART2Handle, rx_data, rx_len) == USART_STATUS_BUSY_RX);
+
+		/* wait until all the bytes are received from PC */
+		/* When all the bytes are received rxCmplt will be SET in application callback */
+		while(rx_cmplt != SET);
+		rx_cmplt = RESET;
+
+		rx_data[rx_len] = '\0';
+		printf("received msg:%s\n",rx_data);
+		memset(rx_data,0,strlen((char*)rx_data));
+
+		/* msg count increment */
+		msg_cnt = (msg_cnt + 1)% 3;
 
 	}
 }
@@ -152,6 +186,13 @@ void USART2_IRQHandler(void){
 }
 
 
+void USART_ApplicationEventCallback (USART_Handle_t *pUSARTHandle, uint8_t AppEv) {
 
+	if( AppEv == USART_EV_RX_CMPLT){
+		rx_cmplt = SET;
+
+	}
+
+}
 
 

@@ -11,10 +11,10 @@
 ../drivers/src/stm32f446xx_usart_driver.c:446:6:USART_SendData	32	static
 ../drivers/src/stm32f446xx_usart_driver.c:511:6:USART_ReceiveData	32	static
 ../drivers/src/stm32f446xx_usart_driver.c:597:10:USART_SendDataIT	32	static
-../drivers/src/stm32f446xx_usart_driver.c:631:9:USART_ReceiveDataIT	32	static
-../drivers/src/stm32f446xx_usart_driver.c:677:13:USART_HandleRXNEInterrupt	16	static
-../drivers/src/stm32f446xx_usart_driver.c:697:13:USART_HandleTXEInterrupt	16	static
-../drivers/src/stm32f446xx_usart_driver.c:727:6:USART_IRQInterruptConfig	16	static
-../drivers/src/stm32f446xx_usart_driver.c:784:6:USART_IRQPriorityConfig	24	static
-../drivers/src/stm32f446xx_usart_driver.c:811:6:USART_IRQHandling	16	static
-../drivers/src/stm32f446xx_usart_driver.c:824:13:USART_ApplicationEventCallback	16	static
+../drivers/src/stm32f446xx_usart_driver.c:635:9:USART_ReceiveDataIT	32	static
+../drivers/src/stm32f446xx_usart_driver.c:681:13:USART_HandleRXNEInterrupt	24	static
+../drivers/src/stm32f446xx_usart_driver.c:786:13:USART_HandleTXEInterrupt	24	static
+../drivers/src/stm32f446xx_usart_driver.c:878:6:USART_IRQInterruptConfig	16	static
+../drivers/src/stm32f446xx_usart_driver.c:935:6:USART_IRQPriorityConfig	24	static
+../drivers/src/stm32f446xx_usart_driver.c:962:6:USART_IRQHandling	32	static
+../drivers/src/stm32f446xx_usart_driver.c:1144:13:USART_ApplicationEventCallback	16	static

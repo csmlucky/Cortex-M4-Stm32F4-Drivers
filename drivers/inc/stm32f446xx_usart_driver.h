@@ -118,6 +118,7 @@ typedef struct{
 #define USART_EV_IDLE			  	3
 #define USART_EV_ERR_ORE			4
 #define USART_EV_ERR_NE				5
+#define USART_EV_ERR_FE				6
 
 
 

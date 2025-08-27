@@ -171,7 +171,7 @@ void USART_Init(USART_Handle_t *pUSARTHandle){
 
 	/*code to configure the baud rate */
 
-	USART_SetBaudRate(pUSARTHandle ->pUSARTx, USART_BAUD_9600);
+	USART_SetBaudRate(pUSARTHandle ->pUSARTx, pUSARTHandle->USART_Config.USART_BaudRate);
 
 }
 
@@ -607,6 +607,10 @@ uint8_t  USART_SendDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pTxBuffer, uint
 		/* Enable TX interrupt */
 		pUSARTHandle ->pUSARTx ->CR1 |= (1 << USART_CR1_TXEIE);
 
+		/* Enable TCE */
+		pUSARTHandle ->pUSARTx ->CR1 |= (1 << USART_CR1_TCIE);
+
+
 	}
 
 	return busystate;
@@ -749,9 +753,15 @@ static void USART_HandleRXNEInterrupt (USART_Handle_t *pUSARTHandle){
 		if(! pUSARTHandle->RxLen)
 		{
 			/* disable the rxne */
+			uint8_t dummy;
 			pUSARTHandle->pUSARTx->CR1 &= ~( 1 << USART_CR1_RXNEIE );
 			pUSARTHandle->RxState = USART_STATUS_READY;
+			pUSARTHandle ->RxBuffer = NULL;
+			pUSARTHandle ->RxLen = 0;
+			dummy = pUSARTHandle ->pUSARTx ->SR;
+			dummy = pUSARTHandle ->pUSARTx ->DR;
 			USART_ApplicationEventCallback(pUSARTHandle,USART_EV_RX_CMPLT);
+			(void) dummy;
 		}
 	}
 
@@ -775,7 +785,9 @@ static void USART_HandleRXNEInterrupt (USART_Handle_t *pUSARTHandle){
  *****************************************************************/
 static void USART_HandleTXEInterrupt (USART_Handle_t *pUSARTHandle){
 
-	if(pUSARTHandle->TxBusyState == USART_STATUS_BUSY_TX)
+	uint16_t *pdata;
+
+	if(pUSARTHandle->TxState == USART_STATUS_BUSY_TX)
 	{
 		/*Keep sending data until Txlen reaches to zero */
 		if(pUSARTHandle->TxLen > 0)
@@ -831,6 +843,7 @@ static void USART_HandleTXEInterrupt (USART_Handle_t *pUSARTHandle){
 			/* TxLen is zero */
 			/* clear the TXEIE bit (disable interrupt for TXE flag ) */
 			pUSARTHandle ->pUSARTx ->CR1 &= ~(1 << USART_CR1_TXEIE);
+
 		}
 	}
 
@@ -948,7 +961,7 @@ void USART_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority){
  */
 void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 
-	uint32_t temp1 , temp2, temp3, pdata;
+	uint32_t temp1 , temp2, temp3;
 
 /*************************Check for TC flag ********************************************/
 
@@ -956,14 +969,14 @@ void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 	temp1 = pUSARTHandle->pUSARTx->SR & ( 1 << USART_SR_TC);
 
 	 /*check the state of TCEIE bit */
-	temp2 = pUSARTHandle->pUSARTx->TODO & ( 1 << USART_CR1_TCIE);
+	temp2 = pUSARTHandle->pUSARTx->CR1 & ( 1 << USART_CR1_TCIE);
 
 	if(temp1 && temp2 )
 	{
 		/* this interrupt is because of TC */
 
 		/* close transmission and call application callback if TxLen is zero */
-		if ( pUSARTHandle->TxState == USART_BUSY_IN_TX)
+		if ( pUSARTHandle->TxState == USART_STATUS_BUSY_TX)
 		{
 			/* Check the TxLen . If it is zero then close the data transmission */
 			if(! pUSARTHandle->TxLen )
@@ -975,7 +988,7 @@ void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 				pUSARTHandle->pUSARTx->CR1 &= ~( 1 << USART_CR1_TCIE);
 
 				/*Reset the application state */
-				pUSARTHandle->TxState = USART_READY;
+				pUSARTHandle->TxState = USART_STATUS_READY;
 
 				/*Reset Buffer address to NULL */
 				pUSARTHandle ->TxBuffer = NULL;
@@ -1031,12 +1044,12 @@ void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 
 	/* check the state of CTSIE bit in CR3 (This bit is not available for UART4 & UART5.) */
 	temp3 = pUSARTHandle->pUSARTx->CR3 & ( 1 << USART_CR3_CTSIE);
-
+	(void) temp3;
 
 	if(temp1  && temp2 )
 	{
 		/* clear the CTS flag in SR */
-		pUSARTHandle ->pUSARTx ->SR =& ~(1 << USART_SR_CTS);
+		pUSARTHandle ->pUSARTx ->SR &= ~(1 << USART_SR_CTS);
 
 		/* this interrupt is because of cts */
 		USART_ApplicationEventCallback(pUSARTHandle,USART_EV_CTS);
@@ -1076,7 +1089,7 @@ void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 		/*Need not to clear the ORE flag here, instead give an api for the application to clear the ORE flag .*/
 
 		/* this interrupt is because of Overrun error */
-		USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ORE);
+		USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ERR_ORE);
 	}
 
 
@@ -1101,7 +1114,7 @@ void USART_IRQHandling(USART_Handle_t *pUSARTHandle){
 			USART_ApplicationEventCallback(pUSARTHandle,USART_EV_ERR_FE);
 		}
 
-		if(temp1 & ( 1 << USART_SR_NE) )
+		if(temp1 & ( 1 << USART_SR_NF) )
 		{
 			/*
 				This bit is set by hardware when noise is detected on a received frame. It is cleared by a
