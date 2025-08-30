@@ -15,7 +15,7 @@
 ../drivers/src/stm32f446xx_spi_driver.c:543:6:SPI_CloseTransmission	1
 ../drivers/src/stm32f446xx_spi_driver.c:571:6:SPI_CloseReception	1
 ../drivers/src/stm32f446xx_spi_driver.c:599:6:SPI_ClearOVRFlag	2
-../drivers/src/stm32f446xx_spi_driver.c:631:6:SPI_TXE_InterruptHandle	4
-../drivers/src/stm32f446xx_spi_driver.c:679:6:SPI_RXNE_InterruptHandle	4
-../drivers/src/stm32f446xx_spi_driver.c:726:6:SPI_OVR_InterruptHandle	1
+../drivers/src/stm32f446xx_spi_driver.c:631:13:SPI_TXE_InterruptHandle	4
+../drivers/src/stm32f446xx_spi_driver.c:679:13:SPI_RXNE_InterruptHandle	4
+../drivers/src/stm32f446xx_spi_driver.c:726:13:SPI_OVR_InterruptHandle	1
 ../drivers/src/stm32f446xx_spi_driver.c:741:13:SPI_ApplicationEventCallback	1

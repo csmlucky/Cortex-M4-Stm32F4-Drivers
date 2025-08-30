@@ -1,0 +1,15 @@
+../drivers/src/stm32f446xx_rtc_driver.c:50:10:RTC_GetFlagStatus	2
+../drivers/src/stm32f446xx_rtc_driver.c:74:6:RTC_WUTConfig	1
+../drivers/src/stm32f446xx_rtc_driver.c:92:6:RTC_GetTimeDate	3
+../drivers/src/stm32f446xx_rtc_driver.c:160:6:RTC_Init	2
+../drivers/src/stm32f446xx_rtc_driver.c:226:13:RTC_EnterCalendrInitMode	2
+../drivers/src/stm32f446xx_rtc_driver.c:241:13:RTC_ExitCalendrInitMode	1
+../drivers/src/stm32f446xx_rtc_driver.c:254:13:RTC_SetTimeDate	1
+../drivers/src/stm32f446xx_rtc_driver.c:289:13:BackupDomain_Unlock	1
+../drivers/src/stm32f446xx_rtc_driver.c:306:13:BackupDomain_Lock	1
+../drivers/src/stm32f446xx_rtc_driver.c:319:13:RTC_Unlock	1
+../drivers/src/stm32f446xx_rtc_driver.c:331:13:RTC_Lock	1
+../drivers/src/stm32f446xx_rtc_driver.c:342:13:RTC_ClkConfig	14
+../drivers/src/stm32f446xx_rtc_driver.c:414:6:RTC_IRQInterruptConfig	16
+../drivers/src/stm32f446xx_rtc_driver.c:471:6:RTC_IRQPriorityConfig	1
+../drivers/src/stm32f446xx_rtc_driver.c:487:13:RTC_ApplicationEventCallback	1

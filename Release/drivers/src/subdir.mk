@@ -8,6 +8,7 @@ C_SRCS += \
 ../drivers/src/stm32f446xx_gpio_driver.c \
 ../drivers/src/stm32f446xx_i2c_driver.c \
 ../drivers/src/stm32f446xx_rcc_driver.c \
+../drivers/src/stm32f446xx_rtc_driver.c \
 ../drivers/src/stm32f446xx_spi_driver.c \
 ../drivers/src/stm32f446xx_usart_driver.c 
 
@@ -15,6 +16,7 @@ OBJS += \
 ./drivers/src/stm32f446xx_gpio_driver.o \
 ./drivers/src/stm32f446xx_i2c_driver.o \
 ./drivers/src/stm32f446xx_rcc_driver.o \
+./drivers/src/stm32f446xx_rtc_driver.o \
 ./drivers/src/stm32f446xx_spi_driver.o \
 ./drivers/src/stm32f446xx_usart_driver.o 
 
@@ -22,6 +24,7 @@ C_DEPS += \
 ./drivers/src/stm32f446xx_gpio_driver.d \
 ./drivers/src/stm32f446xx_i2c_driver.d \
 ./drivers/src/stm32f446xx_rcc_driver.d \
+./drivers/src/stm32f446xx_rtc_driver.d \
 ./drivers/src/stm32f446xx_spi_driver.d \
 ./drivers/src/stm32f446xx_usart_driver.d 
 
@@ -33,7 +36,7 @@ drivers/src/%.o drivers/src/%.su drivers/src/%.cyclo: ../drivers/src/%.c drivers
 clean: clean-drivers-2f-src
 
 clean-drivers-2f-src:
-	-$(RM) ./drivers/src/stm32f446xx_gpio_driver.cyclo ./drivers/src/stm32f446xx_gpio_driver.d ./drivers/src/stm32f446xx_gpio_driver.o ./drivers/src/stm32f446xx_gpio_driver.su ./drivers/src/stm32f446xx_i2c_driver.cyclo ./drivers/src/stm32f446xx_i2c_driver.d ./drivers/src/stm32f446xx_i2c_driver.o ./drivers/src/stm32f446xx_i2c_driver.su ./drivers/src/stm32f446xx_rcc_driver.cyclo ./drivers/src/stm32f446xx_rcc_driver.d ./drivers/src/stm32f446xx_rcc_driver.o ./drivers/src/stm32f446xx_rcc_driver.su ./drivers/src/stm32f446xx_spi_driver.cyclo ./drivers/src/stm32f446xx_spi_driver.d ./drivers/src/stm32f446xx_spi_driver.o ./drivers/src/stm32f446xx_spi_driver.su ./drivers/src/stm32f446xx_usart_driver.cyclo ./drivers/src/stm32f446xx_usart_driver.d ./drivers/src/stm32f446xx_usart_driver.o ./drivers/src/stm32f446xx_usart_driver.su
+	-$(RM) ./drivers/src/stm32f446xx_gpio_driver.cyclo ./drivers/src/stm32f446xx_gpio_driver.d ./drivers/src/stm32f446xx_gpio_driver.o ./drivers/src/stm32f446xx_gpio_driver.su ./drivers/src/stm32f446xx_i2c_driver.cyclo ./drivers/src/stm32f446xx_i2c_driver.d ./drivers/src/stm32f446xx_i2c_driver.o ./drivers/src/stm32f446xx_i2c_driver.su ./drivers/src/stm32f446xx_rcc_driver.cyclo ./drivers/src/stm32f446xx_rcc_driver.d ./drivers/src/stm32f446xx_rcc_driver.o ./drivers/src/stm32f446xx_rcc_driver.su ./drivers/src/stm32f446xx_rtc_driver.cyclo ./drivers/src/stm32f446xx_rtc_driver.d ./drivers/src/stm32f446xx_rtc_driver.o ./drivers/src/stm32f446xx_rtc_driver.su ./drivers/src/stm32f446xx_spi_driver.cyclo ./drivers/src/stm32f446xx_spi_driver.d ./drivers/src/stm32f446xx_spi_driver.o ./drivers/src/stm32f446xx_spi_driver.su ./drivers/src/stm32f446xx_usart_driver.cyclo ./drivers/src/stm32f446xx_usart_driver.d ./drivers/src/stm32f446xx_usart_driver.o ./drivers/src/stm32f446xx_usart_driver.su
 
 .PHONY: clean-drivers-2f-src
 
