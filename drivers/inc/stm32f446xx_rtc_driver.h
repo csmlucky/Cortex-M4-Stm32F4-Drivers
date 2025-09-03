@@ -163,6 +163,14 @@ typedef struct{
 #define RTC_PM			1
 
 
+/*
+ * RTC events
+ */
+#define RTC_EV_WUTI					1
+
+
+
+
 /*********************************************************************************
  * API supported by this Driver. For more information refer to the Function definitions
  **************************************************************************************/
@@ -198,7 +206,7 @@ void RTC_AlarmBClearFlag(void);
  * Wakeup timer
   */
 void RTC_WUTConfig(RTC_WUT_Config_t *pWUTConfig);
-void RTC_WakeupControl(uint8_t EnorDi);
+void RTC_WUTControl(uint8_t EnorDi);
 void RTC_WakeupClearFlag(void);
 
 
@@ -212,14 +220,14 @@ uint8_t RTC_GetFlagStatus(uint8_t flagName);
  */
 void RTC_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
 void RTC_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority);
-void RTC_IRQHandling(RTC_Handle_t *pRTCHandle);
+void RTC_WUTIRQHandling(void);
 
 
 
 /*
  * Application call backs
  */
-void RTC_ApplicationEventCallback (RTC_Handle_t *pRTCHandle, uint8_t AppEv);
+void RTC_ApplicationEventCallback (uint8_t AppEv);
 
 
 #endif /* INC_STM32F446XX_RTC_DRIVER_H_ */

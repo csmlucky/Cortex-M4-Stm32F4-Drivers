@@ -57,6 +57,40 @@ uint8_t  RTC_GetFlagStatus (uint8_t flagName){
 
 
 
+
+/******************************************************************************
+ * @fn			- WUT Control
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-
+ *
+ * @note		-
+ */
+void RTC_WUTControl(uint8_t EnorDi){
+
+	if (EnorDi == DISABLE){
+		/* Set WUTE in RTC_CR to disable the wakeup timer */
+		RTC->CR &= ~(1 << RTC_CR_WUTE);
+
+		/* wait until WUTWF bit is set in RTC_ISR to make sure the access to wakeup auto-reload counter and to WUCKSEL[2:0] bits is allowed */
+		while(!(RTC->ISR & (1 << RTC_ISR_WUTWF)));
+	}
+	else{
+		/* Set WUTE in RTC_CR to disable the wakeup timer */
+		RTC->CR |= (1 << RTC_CR_WUTE);
+	}
+
+
+}
+
+
+
+
 /******************************************************************************
  * @fn			- WUT config
  *
@@ -73,11 +107,73 @@ uint8_t  RTC_GetFlagStatus (uint8_t flagName){
 
 void RTC_WUTConfig(RTC_WUT_Config_t *pWUTConfig){
 
+	uint32_t temp = 0;
+
+	/* 1.Backup domain write enable */
+	BackupDomain_Unlock();
+
+	/* 2. RTC write key */
+	RTC_Unlock();
+
+	/* 3. Disable Wake up timer */
+	RTC_WUTControl(DISABLE);
+
+	/* 4.Load WUTR with reload value */
+	temp = DECTOBCD(pWUTConfig ->Auto_Reload);
+	RTC->WUTR = temp;
+
+	/* 5. Select wakeup clock using WUCKSEL[2:0] bits in RTC-CR */
+	RTC->CR |= (pWUTConfig->Clk & 0x0F);
+
+	if(pWUTConfig->Output_Select == RTC_OUT_WUT){
+		/* will implement later */
+
+	}
+
+	/* clear wutf flag */
+	RTC->ISR &= ~(1 << RTC_ISR_WUTF);
+	/* Enable RTC block internal interrupt to enable EXTI block event or NVIC interrupt */
+	RTC->CR |= (1 << RTC_CR_WUTIE);
+
+	/* Enable Rising edge */
+	EXTI->RTSR |= (1 << 22);
+	/* Disable Falling Edge */
+	EXTI ->FTSR &= ~(1 << 22);
+
+	if(pWUTConfig->Interrupt_EnorDi){
+
+		/* Clear EXTI22 pending in PR */
+		EXTI ->PR &= ~(1 << 22);
+		/* Enable EXTI 22 Interrupt in IMR */
+		EXTI ->IMR |= (1 <<22);
+
+		/* set priority and Enable NVIC IRQ */
+		RTC_IRQPriorityConfig(IRQ_NO_EXTI22, NVIC_IRQ_PR10);
+		RTC_IRQInterruptConfig(IRQ_NO_EXTI22, ENABLE);
+
+	}
+	else {
+		/* Clear EXTI22 pending in PR */
+		EXTI ->PR &= ~(1 << 22);
+		/* Enable EXTI 22 in Event mask reg  */
+		EXTI ->EMR |= (1 << 22);
+	}
+
+	/* Enable wake up timer */
+	RTC_WUTControl(ENABLE);
+
+	/* RTC write key to lock */
+	RTC_Lock();
+
+	/* Backup domain write enable */
+	BackupDomain_Lock();
+
+
 }
 
 
 /******************************************************************************
- * @fn			- WUT config
+ * @fn			- RTC_GetTimeDate
  *
  * @brief		-
  *
@@ -480,11 +576,47 @@ void RTC_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority){
 }
 
 
+/******************************************************************************
+ * @fn			- RTC_WUTIRQHandling
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-
+ *
+ * @note		-
+ */
+void RTC_WUTIRQHandling(void){
+
+	if(RTC->ISR & (1 << RTC_ISR_WUTF)){
+		/* clear WATF flag */
+		BackupDomain_Unlock();
+		RTC ->ISR &= ~(1 << RTC_ISR_WUTF);
+
+		/* clear pending flag */
+		if(EXTI->PR & (1 << 22)){
+			EXTI->PR |= (1 <<22);
+		}
+
+		/* application event call back */
+		RTC_ApplicationEventCallback(RTC_EV_WUTI);
+	}
+}
+
+
+
+
+
+
+
 
 /******************************************************************************
  * 						Call back Fns
  ******************************************************************************/
-__weak void RTC_ApplicationEventCallback (RTC_Handle_t *pRTCHandle, uint8_t AppEv){
+__weak void RTC_ApplicationEventCallback (uint8_t AppEv){
 
 	/* This is a weak function. Application may override it */
 }

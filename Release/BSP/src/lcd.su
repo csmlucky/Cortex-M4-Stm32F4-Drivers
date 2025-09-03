@@ -1,0 +1,3 @@
+../BSP/src/lcd.c:32:6:LCD_Init	8	static
+../BSP/src/lcd.c:52:13:LCD_I2C_GPIOInits	8	static
+../BSP/src/lcd.c:73:13:LCD_I2CInits	8	static

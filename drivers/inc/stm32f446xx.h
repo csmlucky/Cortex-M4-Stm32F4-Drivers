@@ -539,8 +539,8 @@ typedef struct{
 
 
 /* RTC */
-#define IRQ_NO_EXTI17			17 		/* RTC Alaram Event */
-#define IRQ_NO_EXTI22			22		/* RTC Wake up Event */
+#define IRQ_NO_EXTI17			41 		/* RTC Alaram Event */
+#define IRQ_NO_EXTI22			3		/* RTC Wake up Event */
 
 
 /*

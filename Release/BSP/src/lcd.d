@@ -1,4 +1,5 @@
-Src/014rtc_testing.o: ../Src/014rtc_testing.c \
+BSP/src/lcd.o: ../BSP/src/lcd.c \
+ D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/BSP/inc/lcd.h \
  D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx.h \
  D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx_gpio_driver.h \
  D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx.h \
@@ -7,6 +8,7 @@ Src/014rtc_testing.o: ../Src/014rtc_testing.c \
  D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx_usart_driver.h \
  D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx_rcc_driver.h \
  D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx_rtc_driver.h
+D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/BSP/inc/lcd.h:
 D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx.h:
 D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx_gpio_driver.h:
 D:/STM32CubeIDE/workspace_1.18.1/stm32f4_drivers/drivers/inc/stm32f446xx.h:
