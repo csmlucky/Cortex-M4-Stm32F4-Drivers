@@ -844,6 +844,11 @@ typedef struct{
 
 
 
+ static inline void __NOP(void)
+ {
+     __asm volatile ("nop");
+ }
+
 
 #include "stm32f446xx_gpio_driver.h"
 #include "stm32f446xx_spi_driver.h"

@@ -45,15 +45,38 @@
 
 /* LCD Control bit position */
 #define LCD_RS_POSI							0
-#define LCD_R_W_POSI						1
+#define LCD_RW_POSI							1
 #define LCD_EN_POSI							2
 #define LCD_BL_POSI							3
 
 /* LCD Commands */
+#define LCD_INIT_CMD1						0x03
+#define LCD_INIT_CMD2						0x02
+
+#define LCD_CNFG_CMD_4BIT_2LN_5X8F			0x28    	/* 4bit, 2 lines display Font size 5 *8 */
+#define LCD_CNFG_CMD_DON_CON				0X0E		/* Display on and Cursor on */
+#define LCD_CNFG_CMD_INCADD       	       	0x06		/* entry mode inc add */
+#define LCD_CNFG_CMD_DIS_CLEAR      	    0X01
+#define LCD_CNFG_CMD_DIS_RETURN_HOME     	0x02
+
+#define LCD_DDRAM_LN1						0x80
+#define LCD_DDRAM_LN2						0xC0
+
+
 
 
 /**********************************API***********************************************************/
 
 void LCD_Init(void);
+
+void LCD_PrintString(char *lcdBuf);
+void LCD_PrintChar(char lcdChar);
+
+/* display config fns */
+void LCD_DisplayClr(void);
+void LCD_Display_ReturnHome(void);
+void LCD_SetCursor(uint8_t row, uint8_t column);
+
+void LCD_SendCmd(uint8_t lcdCmd);
 
 #endif /* INC_LCD_H_ */

@@ -1140,6 +1140,19 @@ void I2C_ER_IRQHandling(I2C_Handle_t *pI2CHandle){
 		/* clear the ACK failure error flag */
 		pI2CHandle->pI2Cx->SR1 &= ~( 1 << I2C_SR1_AF);
 
+		/* generate stop condition */
+		I2C_GenerateStopCondition(pI2CHandle ->pI2Cx);
+
+		/*  Optional but helpful: wait a moment for BUSY to drop */
+		/*    (avoid tight infinite loops; use a small guard) */
+		for (volatile int g = 0; g < 10000; ++g) {
+			if ( (pI2CHandle->pI2Cx->SR2 & (1 << I2C_SR2_BUSY)) == 0 ) break;
+		}
+
+		/* 4) Close TX state & disable ITs so your API sees READY again */
+		I2C_CloseSendData(pI2CHandle);
+
+
 		/* notify the application about the error */
 		I2C_ApplicationEventCallback(pI2CHandle,I2C_ERROR_AF);
 	}

@@ -23,5 +23,5 @@
 ../drivers/src/stm32f446xx_i2c_driver.c:900:6:I2C_IRQInterruptConfig	16	static
 ../drivers/src/stm32f446xx_i2c_driver.c:957:6:I2C_IRQPriorityConfig	24	static
 ../drivers/src/stm32f446xx_i2c_driver.c:984:6:I2C_EV_IRQHandling	32	static
-../drivers/src/stm32f446xx_i2c_driver.c:1102:6:I2C_ER_IRQHandling	24	static
-../drivers/src/stm32f446xx_i2c_driver.c:1179:13:I2C_ApplicationEventCallback	16	static
+../drivers/src/stm32f446xx_i2c_driver.c:1102:6:I2C_ER_IRQHandling	32	static
+../drivers/src/stm32f446xx_i2c_driver.c:1192:13:I2C_ApplicationEventCallback	16	static

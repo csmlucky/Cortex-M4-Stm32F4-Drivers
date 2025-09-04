@@ -1,5 +1,5 @@
 "./BSP/src/lcd.o"
-"./Src/014rtc_wut_interrupt.o"
+"./Src/015rtc_lcd_test.o"
 "./Src/syscalls.o"
 "./Src/sysmem.o"
 "./Startup/startup_stm32f446retx.o"
