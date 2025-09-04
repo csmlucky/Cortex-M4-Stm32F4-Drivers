@@ -628,7 +628,7 @@ void SPI_ClearOVRFlag(SPI_Handle_t *pSPIHandle){
  *
  * @note		-
  */
-void SPI_TXE_InterruptHandle(SPI_Handle_t *pSPIHandle){
+static void SPI_TXE_InterruptHandle(SPI_Handle_t *pSPIHandle){
 
 	if(pSPIHandle -> TxLen > 0){
 
@@ -676,7 +676,7 @@ void SPI_TXE_InterruptHandle(SPI_Handle_t *pSPIHandle){
  *
  * @note		-
  */
-void SPI_RXNE_InterruptHandle(SPI_Handle_t *pSPIHandle){
+static void SPI_RXNE_InterruptHandle(SPI_Handle_t *pSPIHandle){
 
 	if(pSPIHandle -> RxLen > 0){
 
@@ -723,7 +723,7 @@ void SPI_RXNE_InterruptHandle(SPI_Handle_t *pSPIHandle){
  *
  * @note		-
  */
-void SPI_OVR_InterruptHandle(SPI_Handle_t *pSPIHandle){
+static void SPI_OVR_InterruptHandle(SPI_Handle_t *pSPIHandle){
 
 	SPI_ClearOVRFlag(pSPIHandle);
 

@@ -96,6 +96,9 @@
 #define UART4_BASEADDR					(APB1PERIPH_BASE + 0x4C00)
 #define UART5_BASEADDR					(APB1PERIPH_BASE + 0x5000)
 
+#define RTC_BASEADDR					(APB1PERIPH_BASE + 0x2800)
+#define PWR_BASEADDR					(APB1PERIPH_BASE + 0x7000)
+
 
 /*
  * Base address of peripherals on APB2 bus
@@ -207,7 +210,9 @@ typedef struct{
 
 }SYSCFG_RegDef_t;
 
-
+/*
+ * SPI reg definition structure
+ */
 typedef struct{
 	__vo uint32_t CR1;				/* Control Reg1 address offset:0x00 */
 	__vo uint32_t CR2;				/* Control Reg2 address offset:0x04 */
@@ -222,6 +227,9 @@ typedef struct{
 }SPI_RegDef_t;
 
 
+/*
+ * I2C reg definition structure
+ */
 typedef struct{
 	__vo uint32_t CR1;				/* Control Reg1 address offset:0x00 */
 	__vo uint32_t CR2;				/* Control Reg2 address offset:0x04 */
@@ -250,6 +258,43 @@ typedef struct{
 }USART_RegDef_t;
 
 
+/*
+ * RTC reg definition structure
+ */
+typedef struct{
+	__vo uint32_t TR;				/* Time Reg Address offset: 0x00 */
+	__vo uint32_t DR;				/* Date Reg Address offset: 0x04 */
+	__vo uint32_t CR;				/* Control Reg Address offset: 0x08 */
+	__vo uint32_t ISR;				/* Initialization and Status Reg Address offset: 0x0C */
+	__vo uint32_t PRER;				/* Prescaler Reg Address offset: 0x10 */
+	__vo uint32_t WUTR;				/* WakeUpTimer Reg Address offset: 0x14 */
+	__vo uint32_t CALIBR;			/* Calibration Reg Address offset: 0x18 */
+	__vo uint32_t ALRMAR;			/* Alaram A Reg Address offset: 0x1C */
+	__vo uint32_t ALRMBR;			/* Alaram A Reg Address offset: 0x20 */
+	__vo uint32_t WPR;				/* Write protection Reg Address offset: 0x24 */
+	__vo uint32_t SSR;				/* Sub Second Reg Address offset: 0x28 */
+	__vo uint32_t SHIFTR;			/* Shift Control Reg Address offset: 0x2C */
+	__vo uint32_t TSTR;				/* Time Stamp Time Reg Address offset: 0x30 */
+	__vo uint32_t TSDR;				/* Time Stamp Date Reg Address offset: 0x34 */
+	__vo uint32_t TSSSR;			/* Time Stamp Sub Sec Reg Address offset: 0x38 */
+	__vo uint32_t CALR;		    	/* Calibration Reg Address offset: 0x3C */
+	__vo uint32_t TAFCR;			/* Tamper and Alternate Function Configuration Reg Address offset: 0x40 */
+	__vo uint32_t ALRMASSR;			/* Alaram A sub second Reg Address offset: 0x44 */
+	__vo uint32_t ALRMBSSR;			/* Alaram B Sub Second Reg Address offset: 0x48 */
+	__vo uint32_t Reseved;			/* Address offset: 0x4C */
+	__vo uint32_t BKPR[20];			/* Back up Reg Address offset: 0x50 - 0x9C */
+
+}RTC_RegDef_t;
+
+/*
+ * PWR reg definition structure
+ */
+
+typedef struct{
+	 __vo uint32_t CR; 				/* Control Reg Address offset: 0x00 */
+	 __vo uint32_t CSR; 			/* Control / Status Reg Address offset: 0x00 */
+
+ }PWR_RegDef_t;
 
 /*
  * peripheral definitions (peripheral base addresses typecasted to xxx_RegDef_t)
@@ -283,6 +328,9 @@ typedef struct{
 #define UART4				((USART_RegDef_t *)UART4_BASEADDR)
 #define UART5				((USART_RegDef_t *)UART5_BASEADDR)
 #define USART6				((USART_RegDef_t *)USART6_BASEADDR)
+
+#define RTC 				((RTC_RegDef_t *)RTC_BASEADDR)
+#define PWR					((PWR_RegDef_t *)PWR_BASEADDR)
 
 
 /****************************************************************************************
@@ -335,6 +383,11 @@ typedef struct{
  */
 #define SYSCFG_PCLK_EN()		(RCC->APB2ENR |= (1 << 14))
 
+/*
+ * Clock Enable Macros for Power to access RTC that sits in Backup Domain
+ */
+#define PWR_PCLK_EN()			(RCC->APB1ENR |= (1 << 28))
+
 
 /*
  * Clock Disable Macros for GPIO peripherals
@@ -381,6 +434,11 @@ typedef struct{
  */
 #define SYSCFG_PCLK_DI()		(RCC->APB2ENR &= ~ (1 << 14))
 
+/*
+ * Clock Disable Macros for Power
+ */
+#define PWR_PCLK_DI()			(RCC->APB1ENR &= ~(1 << 28))
+
 
 /*
  * Reg reset Macros for GPIOx
@@ -418,6 +476,16 @@ typedef struct{
 #define UART4_REG_RESET()		do{(RCC->APB1RSTR |= (1 << 19)); (RCC->APB1RSTR &= ~(1 << 19));}while(0)
 #define UART5_REG_RESET()		do{(RCC->APB1RSTR |= (1 << 20)); (RCC->APB1RSTR &= ~(1 << 20));}while(0)
 #define USART6_REG_RESET()		do{(RCC->APB2RSTR |= (1 << 5)); (RCC->APB2RSTR &= ~(1 << 5));}while(0)
+
+
+/*
+ * Reset Macro for RTC -> resets BAckup domain
+ * Note: Enable PWR clock and backup access first
+ */
+#define RTC_REG_RESET()			do{(RCC->APB1ENR |= (1 << 28));\
+								   (PWR->CR |= (1 << 14));\
+								   (RCC->BDCR |= (1 << 16));\
+								   (RCC->BDCR &= ~(1 << 16));}while(0)
 
 
 
@@ -461,12 +529,18 @@ typedef struct{
 #define IRQ_NO_I2C3_EV			72
 #define IRQ_NO_I2C3_ER			73
 
+/* USART */
 #define IRQ_NO_USART1			37
 #define IRQ_NO_USART2			38
 #define IRQ_NO_USART3			39
 #define IRQ_NO_UART4			52
 #define IRQ_NO_UART5			53
 #define IRQ_NO_USART6			71
+
+
+/* RTC */
+#define IRQ_NO_EXTI17			41 		/* RTC Alaram Event */
+#define IRQ_NO_EXTI22			3		/* RTC Wake up Event */
 
 
 /*
@@ -695,6 +769,85 @@ typedef struct{
 #define USART_CR3_CTSIE				10
 #define USART_CR3_ONEBIT			11
 
+ /******************************************************************************************
+  * Bit positions definitions of RTC
+  ********************************************************************************************/
+ /*
+  * Bit position definition of RTC - ISR
+  */
+#define RTC_ISR_ALRAWF				0
+#define RTC_ISR_ALRBWF				1
+#define RTC_ISR_WUTWF				2
+#define RTC_ISR_SHPF				3
+#define RTC_ISR_INITS				4
+#define RTC_ISR_RSF					5
+#define RTC_ISR_INITF				6
+#define RTC_ISR_INIT				7
+#define RTC_ISR_ALRAF				8
+#define RTC_ISR_ALRBF				9
+#define RTC_ISR_WUTF				10
+#define RTC_ISR_TSF					11
+#define RTC_ISR_TSOVF				12
+#define RTC_ISR_TAMP1F				13
+#define RTC_ISR_TAMP2F				14
+#define RTC_ISR_RECALPF				16
+
+
+
+ /*
+  * Bit position definition of RTC - CR
+  */
+#define RTC_CR_WUCKSEL2_0			0
+#define RTC_CR_TSEDGE				3
+#define RTC_CR_REFCKON				4
+#define RTC_CR_BYPSHAD				5
+#define RTC_CR_FMT					6
+#define RTC_CR_DCE					7
+#define RTC_CR_ALRAE				8
+#define RTC_CR_ALRBE				9
+#define RTC_CR_WUTE					10
+#define RTC_CR_TSE					11
+#define RTC_CR_ALRAIE				12
+#define RTC_CR_ALRBIE				13
+#define RTC_CR_WUTIE				14
+#define RTC_CR_TSIE					15
+#define RTC_CR_ADD1H				16
+#define RTC_CR_SUB1H				17
+#define RTC_CR_BKP					18
+#define RTC_CR_COSEL				19
+#define RTC_CR_POL					20
+#define RTC_CR_OSEL1_0				21
+#define RTC_CR_COE					22
+
+
+/*
+ * Bit position definition of RTC-TR
+ */
+#define RTC_TR_SU3_0				0
+#define RTC_TR_ST2_0				4
+#define RTC_TR_MNU3_0				8
+#define RTC_TR_MNT2_0				12
+#define RTC_TR_HU3_0				16
+#define RTC_TR_HT1_0				20
+#define RTC_TR_AM_PM				22
+
+ /*
+  * Bit position definition of RTC-DR
+  */
+ #define RTC_DR_DU3_0				0
+ #define RTC_DR_DT1_0				4
+ #define RTC_DR_MU3_0				8
+ #define RTC_DR_MT					12
+ #define RTC_DR_WDU2_0				13
+ #define RTC_DR_YU3_0				16
+ #define RTC_DR_YT3_0				20
+
+
+
+ static inline void __NOP(void)
+ {
+     __asm volatile ("nop");
+ }
 
 
 #include "stm32f446xx_gpio_driver.h"
@@ -702,5 +855,6 @@ typedef struct{
 #include "stm32f446xx_i2c_driver.h"
 #include "stm32f446xx_usart_driver.h"
 #include "stm32f446xx_rcc_driver.h"
+#include "stm32f446xx_rtc_driver.h"
 
 #endif /* INC_STM32F446XX_H_ */
